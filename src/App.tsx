@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
 import { BookingRecord, RoomRecord, DayBookingStat, BookingStatus } from './types';
-import LoginPage from './pages/Login.tsx';
+import LoginPage from './pages/login.tsx';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import BookingManagement from './components/BookingManagement';
