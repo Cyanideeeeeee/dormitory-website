@@ -1,0 +1,6 @@
+{
+  "name": "Seafarers Admin Dashboard",
+  "description": "Admin dashboard for managing hotel rooms, bookings, user roles, and real-time booking analytics for AK Seafarers and Transient Homes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
