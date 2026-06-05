@@ -81,6 +81,7 @@ export default function App() {
       status: row.status,
       price: row.price,
       createdAt: row.created_at,
+      checkedInAt: row.checked_in_at ?? null,
     }));
     setBookings(mapped);
   };
@@ -181,9 +182,19 @@ export default function App() {
 
   // ── Update booking status → Supabase ────────────────────────
   const handleUpdateBookingStatus = async (id: string, status: BookingStatus) => {
+    const now = new Date().toLocaleString('en-PH', {
+      month: 'short', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+    });
+
+    const updatePayload: any = { status };
+    if (status === 'Checked-in') {
+      updatePayload.checked_in_at = now;
+    }
+
     const { error } = await supabase
       .from('bookings')
-      .update({ status })
+      .update(updatePayload)
       .eq('id', id);
 
     if (error) {

@@ -15,7 +15,8 @@ import {
   Hash,
   Sparkles,
   ChevronRight,
-  LogOut
+  LogOut,
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
@@ -40,14 +41,24 @@ export default function BookingManagement({
   
   // Quick booking modal standard toggle
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // Details modal
+  const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   
   // Simple form fields
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [formRoomType, setFormRoomType] = useState<RoomType>('Bed space');
   const [guestRoomNumber, setGuestRoomNumber] = useState('101');
-  const [checkIn, setCheckIn] = useState('2026-06-03');
-  const [checkOut, setCheckOut] = useState('2026-06-05');
+  const todayStr = () => new Date().toISOString().split('T')[0];
+  const tomorrowStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [checkIn, setCheckIn] = useState(todayStr);
+  const [checkOut, setCheckOut] = useState(tomorrowStr);
   const [customPrice, setCustomPrice] = useState('');
 
   // Filtering list
@@ -72,8 +83,8 @@ export default function BookingManagement({
   const ROOM_PRICES: Record<string, number> = {
     'Bed space': 250,
     'Solo room': 525,
-    'Couple room': 825,
-    'Family room': 1200,
+    'Couple room': 725,
+    'Family room': 950,
   };
 
   // Calculate pricing based on fixed room type prices
@@ -182,7 +193,7 @@ export default function BookingManagement({
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-xs">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm">
         {/* Search */}
         <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-gray-400 dark:text-gray-500" />
@@ -232,7 +243,7 @@ export default function BookingManagement({
       </div>
 
       {/* BOOKINGS TABLE */}
-      <div className="bg-white dark:bg-[#151c27] rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-[#151c27] rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -255,7 +266,8 @@ export default function BookingManagement({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
+                    whileHover={{ backgroundColor: 'rgba(6,182,212,0.04)' }}
+                    className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-cyan-50/30 dark:hover:bg-cyan-950/10 transition-colors duration-150 cursor-default"
                   >
                     {/* Guest Name & ID */}
                     <td className="py-4 px-6">
@@ -312,6 +324,15 @@ export default function BookingManagement({
                     {/* Interactive Action Menu */}
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Details button — always visible */}
+                        <button
+                          onClick={() => setSelectedBooking(bk)}
+                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-600 dark:text-slate-300 dark:hover:text-white text-xs font-bold transition-all duration-150 flex items-center gap-1"
+                        >
+                          <Eye className="w-3 h-3" />
+                          Details
+                        </button>
+
                         {bk.status === 'Pending' && (
                           <>
                             <button
@@ -531,11 +552,26 @@ export default function BookingManagement({
 
                   </div>
 
-                  <div className="p-4 bg-slate-100/50 dark:bg-slate-900/30 rounded-xl border border-slate-200/40 text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                    <ChevronRight className="w-4 h-4 text-cyan-500 shrink-0 mt-0.5" />
-                    <span>
-                      Creating a new booking adds it directly as **Pending** in the system. The guest can then be checked-in manually from the bookings dashboard grid view.
-                    </span>
+                  {/* Amenities */}
+                  <div className="p-4 bg-slate-100/50 dark:bg-slate-900/30 rounded-xl border border-slate-200/40 space-y-2">
+                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <ChevronRight className="w-3.5 h-3.5 text-cyan-500" />
+                      Amenities
+                    </p>
+                    <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      {(
+                        formRoomType === 'Couple room'
+                          ? ['Wifi', 'Aircon', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
+                          : formRoomType === 'Family room'
+                          ? ['Wifi', 'Aircon', 'Own CR', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
+                          : ['Wifi', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
+                      ).map((amenity) => (
+                        <li key={amenity} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
+                          {amenity}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </form>
 
@@ -557,6 +593,146 @@ export default function BookingManagement({
                 </div>
               </motion.div>
             </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* BOOKING DETAILS MODAL */}
+      <AnimatePresence>
+        {selectedBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedBooking(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              className="relative w-full max-w-md bg-white dark:bg-[#121822] rounded-2xl shadow-2xl border border-slate-200/50 dark:border-slate-800 overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-cyan-500" />
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">
+                    Booking Details
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setSelectedBooking(null)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {/* Booking ID + Status */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg">
+                    #{selectedBooking.id}
+                  </span>
+                  {getStatusBadge(selectedBooking.status)}
+                </div>
+
+                {/* Guest info */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                    <User className="w-4 h-4 text-cyan-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Guest Name</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.guestName}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                    <Mail className="w-4 h-4 text-cyan-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                      <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room Type</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomType}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                      <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room No.</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomNumber}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                      <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl">
+                      <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkOutDate}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-100 dark:border-cyan-900/40">
+                    <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total Price</p>
+                      <p className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
+                        ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Booked on + Checked-in time */}
+                <div className="space-y-1 text-center">
+                  <p className="text-[10px] text-gray-400">
+                    Booked on {selectedBooking.createdAt}
+                  </p>
+                  {selectedBooking.checkedInAt && (
+                    <p className="text-[10px] text-emerald-500 font-semibold flex items-center justify-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                      Checked-in at {selectedBooking.checkedInAt}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0e141d]">
+                <button
+                  onClick={() => setSelectedBooking(null)}
+                  className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>

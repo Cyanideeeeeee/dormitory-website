@@ -1,3 +1,15 @@
+export type UserRoleType = 'Admin' | 'Manager' | 'Staff' | 'Housekeeper' | 'Seafarer';
+
+export interface UserRoleRecord {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRoleType;
+  status: 'Active' | 'Inactive';
+  lastActive: string;
+  permissions: string[];
+}
+
 export type RoomType = 'Bed space' | 'Solo room' | 'Couple room' | 'Family room';
 
 export interface RoomRecord {
@@ -23,6 +35,7 @@ export interface BookingRecord {
   status: BookingStatus;
   price: number;
   createdAt: string;
+  checkedInAt?: string | null;
 }
 
 export interface DayBookingStat {

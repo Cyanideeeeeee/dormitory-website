@@ -51,6 +51,21 @@ export default function DashboardView({
   const [dateFilter, setDateFilter] = useState<'7' | '14' | '30'>('7');
   const [roomCategoryFilter, setRoomCategoryFilter] = useState<'All' | RoomType>('All');
   const [localLoading, setLocalLoading] = useState(false);
+  const [todayDate, setTodayDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // Refresh todayDate at midnight so stats reset automatically each day
+  useEffect(() => {
+    const msUntilMidnight = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      return midnight.getTime() - now.getTime();
+    };
+    const timer = setTimeout(() => {
+      setTodayDate(new Date().toISOString().split('T')[0]);
+    }, msUntilMidnight());
+    return () => clearTimeout(timer);
+  }, [todayDate]);
 
   // Trigger brief visual loader when filters are updated to emulate real-time DB fetches
   useEffect(() => {
@@ -67,17 +82,28 @@ export default function DashboardView({
     return true;
   });
 
-  // Calculate high-level card counts:
-  // "new Booking" (originally 10)
-  const newBookingsCount = filteredBookings.filter((b) => b.status === 'Pending').length;
-  // "Today's check-in" (originally 50)
-  const todayCheckinsCount = filteredBookings.filter((b) => b.status === 'Checked-in').length;
-  // "Today's check-out" (originally 25)
-  const todayCheckoutsCount = filteredBookings.filter((b) => b.status === 'Checked-out').length;
-  
-  // "Total Revenue" (originally ₱10,000.00 or derived)
+  // NEW BOOKING — pending bookings created today
+  const newBookingsCount = filteredBookings.filter(
+    (b) => b.status === 'Pending' && b.createdAt?.slice(0, 10) === todayDate
+  ).length;
+
+  // TODAY'S CHECK-IN — checked in today (checkedInAt date matches today)
+  const todayCheckinsCount = filteredBookings.filter(
+    (b) => b.status === 'Checked-in' && b.checkedInAt?.slice(0, 10) === todayDate
+  ).length;
+
+  // TODAY'S CHECK-OUT — checked out today (checkOutDate matches today)
+  const todayCheckoutsCount = filteredBookings.filter(
+    (b) => b.status === 'Checked-out' && b.checkOutDate === todayDate
+  ).length;
+
+  // TODAY'S REVENUE — sum of bookings created today that are checked-in or checked-out
   const totalRevenue = filteredBookings
-    .filter((b) => b.status === 'Checked-in' || b.status === 'Checked-out')
+    .filter(
+      (b) =>
+        (b.status === 'Checked-in' || b.status === 'Checked-out') &&
+        b.createdAt?.slice(0, 10) === todayDate
+    )
     .reduce((sum, b) => sum + b.price, 0);
 
   // Calculate individual Room Availabilities dynamically from data
@@ -164,7 +190,7 @@ export default function DashboardView({
       </div>
 
       {/* INTERACTIVE FLOATING FILTER SHEET bar */}
-      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-cyan-500" />
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest font-display">
@@ -247,8 +273,8 @@ export default function DashboardView({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* CARD 1: New bookings */}
             <motion.div
-              whileHover={{ y: -4 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-xs flex flex-col justify-between h-36 relative overflow-hidden group transition-all"
+              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
+              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
             >
               <div className="flex justify-between items-start">
                 <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
@@ -275,8 +301,8 @@ export default function DashboardView({
 
             {/* CARD 2: Today's check-in */}
             <motion.div
-              whileHover={{ y: -4 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-xs flex flex-col justify-between h-36 relative overflow-hidden group transition-all"
+              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
+              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
             >
               <div className="flex justify-between items-start">
                 <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
@@ -300,8 +326,8 @@ export default function DashboardView({
 
             {/* CARD 3: Today's check-out */}
             <motion.div
-              whileHover={{ y: -4 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-xs flex flex-col justify-between h-36 relative overflow-hidden group transition-all"
+              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
+              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
             >
               <div className="flex justify-between items-start">
                 <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
@@ -325,8 +351,8 @@ export default function DashboardView({
 
             {/* CARD 4: Total revenue */}
             <motion.div
-              whileHover={{ y: -4 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 shadow-xs flex flex-col justify-between h-36 relative overflow-hidden group transition-all"
+              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
+              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
             >
               <div className="flex justify-between items-start">
                 <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
@@ -358,8 +384,8 @@ export default function DashboardView({
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
               {/* Core available Card 1: Bed space */}
               <motion.div
-                whileHover={{ scale: 1.015 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2 h-28 hover:shadow-xs transition-shadow"
+                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
+                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
                   Bed space
@@ -371,8 +397,8 @@ export default function DashboardView({
 
               {/* Core available Card 2: Solo room */}
               <motion.div
-                whileHover={{ scale: 1.015 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2 h-28 hover:shadow-xs transition-shadow"
+                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
+                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
                   Solo room
@@ -384,8 +410,8 @@ export default function DashboardView({
 
               {/* Core available Card 3: Couple room */}
               <motion.div
-                whileHover={{ scale: 1.015 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2 h-28 hover:shadow-xs transition-shadow"
+                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
+                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
                   Couple room
@@ -397,8 +423,8 @@ export default function DashboardView({
 
               {/* Core available Card 4: Family room */}
               <motion.div
-                whileHover={{ scale: 1.015 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-200/50 dark:border-slate-800/80 flex flex-col items-center justify-center text-center space-y-2 h-28 hover:shadow-xs transition-shadow"
+                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
+                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
               >
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
                   Family room
