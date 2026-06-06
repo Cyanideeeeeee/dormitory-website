@@ -82,44 +82,34 @@ export default function DashboardView({
     return true;
   });
 
-  // NEW BOOKING — pending bookings created today
+  // NEW BOOKING — only Pending bookings created today (deducts once admin checks them in)
   const newBookingsCount = filteredBookings.filter(
     (b) => b.status === 'Pending' && b.createdAt?.slice(0, 10) === todayDate
   ).length;
 
-  // TODAY'S CHECK-IN — checked in today (checkedInAt date matches today)
+  // TODAY'S CHECK-IN — all bookings checked-in today regardless of when they were created
   const todayCheckinsCount = filteredBookings.filter(
     (b) => b.status === 'Checked-in' && b.checkedInAt?.slice(0, 10) === todayDate
   ).length;
 
-  // TODAY'S CHECK-OUT — checked out today (checkOutDate matches today)
+  // TODAY'S CHECK-OUT — bookings where admin clicked Check-Out today
   const todayCheckoutsCount = filteredBookings.filter(
-    (b) => b.status === 'Checked-out' && b.checkOutDate === todayDate
+    (b) => b.status === 'Checked-out' && (b as any).checkedOutAt?.slice(0, 10) === todayDate
   ).length;
 
-  // TODAY'S REVENUE — sum of bookings created today that are checked-in or checked-out
+  // TODAY'S REVENUE — sum of all bookings created today (any status)
   const totalRevenue = filteredBookings
-    .filter(
-      (b) =>
-        (b.status === 'Checked-in' || b.status === 'Checked-out') &&
-        b.createdAt?.slice(0, 10) === todayDate
-    )
+    .filter((b) => b.createdAt?.slice(0, 10) === todayDate)
     .reduce((sum, b) => sum + b.price, 0);
 
-  // Calculate individual Room Availabilities dynamically from data
-  // Standard total is 20 for each type
+  // Room Availability — deduct for Pending (reserved) AND Checked-in (occupied)
   const getAvailableRoomsCount = (type: RoomType) => {
     const roomInfo = rooms.find((r) => r.type === type);
     if (!roomInfo) return 10;
-    
-    // We can compute current active check-ins for this room type
-    const activeCheckins = bookings.filter(
-      (b) => b.roomType === type && b.status === 'Checked-in'
+    const activeBookings = bookings.filter(
+      (b) => b.roomType === type && (b.status === 'Pending' || b.status === 'Checked-in')
     ).length;
-    
-    // Max of total rooms vs checkins
-    const count = Math.max(0, roomInfo.totalRooms - activeCheckins);
-    return count;
+    return Math.max(0, roomInfo.totalRooms - activeBookings);
   };
 
   const bedSpaceAvailable = getAvailableRoomsCount('Bed space');
@@ -438,56 +428,175 @@ export default function DashboardView({
 
           {/* ROOM STATISTICS CHART CONTAINER */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold tracking-widest text-[#535d6c] dark:text-gray-300 uppercase font-display">
-              Room Statistics
-            </h2>
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-widest text-[#535d6c] dark:text-gray-300 uppercase font-display">
+                Room Statistics
+              </h2>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                {dateFilter === '7'
+                  ? (() => { const d = new Date(); d.setDate(d.getDate() - 6); return `${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – Today`; })()
+                  : dateFilter === '14'
+                  ? (() => { const d = new Date(); d.setDate(d.getDate() - 13); return `${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – Today`; })()
+                  : (() => { const now = new Date(); return `${now.toLocaleDateString('en-US',{month:'long'})} 1 – ${now.toLocaleDateString('en-US',{month:'long',day:'numeric'})}`; })()
+                }
+              </span>
+            </div>
 
-            <div className="bg-[#f1f3f6]/80 dark:bg-[#141b25] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/70 shadow-2xs">
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={roomStatsData}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} opacity={0.8} />
-                    <XAxis
-                      dataKey="name"
-                      stroke={chartAxis}
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis stroke={chartAxis} fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: '12px',
-                        background: tooltipBg,
-                        border: `1px solid ${tooltipBorder}`,
-                        fontSize: '11px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        color: tooltipText,
-                      }}
-                      itemStyle={{ paddingBlock: '2px', color: tooltipText }}
-                    />
-                    <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                    <Bar
-                      dataKey="Occupied"
-                      stackId="room"
-                      fill="#06b6d4"
-                      radius={[4, 4, 0, 0]}
-                      name="Active Occupants"
-                    />
-                    <Bar
-                      dataKey="Available"
-                      stackId="room"
-                      fill="#cbd5e1"
-                      className="dark:fill-slate-700"
-                      radius={[4, 4, 0, 0]}
-                      name="Vacant Rooms"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="bg-white dark:bg-[#0f141c] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm">
+              {/* Legend + summary pills */}
+              {(() => {
+                const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
+                const colors: Record<string, string> = {
+                  'Bed space':   '#06b6d4',
+                  'Solo room':   '#8b5cf6',
+                  'Couple room': '#f59e0b',
+                  'Family room': '#10b981',
+                };
+
+                // Build date range: 7/14 days = rolling back N days; 30 days = 1st of current month → today
+                const now = new Date();
+                const days = parseInt(dateFilter);
+                const dateRange: string[] = [];
+
+                if (dateFilter === '30') {
+                  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                  const cursor = new Date(firstOfMonth);
+                  while (cursor <= now) {
+                    dateRange.push(cursor.toISOString().split('T')[0]);
+                    cursor.setDate(cursor.getDate() + 1);
+                  }
+                } else {
+                  for (let i = days - 1; i >= 0; i--) {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    dateRange.push(d.toISOString().split('T')[0]);
+                  }
+                }
+
+                // Count checked-in AND checked-out bookings per room type per day
+                const chartData = dateRange.map((dateStr) => {
+                  const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const entry: Record<string, any> = { date: label };
+                  roomTypes.forEach((rt) => {
+                    entry[`${rt}_in`] = bookings.filter(
+                      (b) => b.roomType === rt && b.checkedInAt?.slice(0, 10) === dateStr
+                    ).length;
+                    entry[`${rt}_out`] = bookings.filter(
+                      (b) => b.roomType === rt && (b as any).checkedOutAt?.slice(0, 10) === dateStr
+                    ).length;
+                  });
+                  return entry;
+                });
+
+                // Summary totals
+                const totalsIn: Record<string, number> = {};
+                const totalsOut: Record<string, number> = {};
+                roomTypes.forEach((rt) => {
+                  totalsIn[rt] = chartData.reduce((s, d) => s + (d[`${rt}_in`] as number), 0);
+                  totalsOut[rt] = chartData.reduce((s, d) => s + (d[`${rt}_out`] as number), 0);
+                });
+
+                const tickInterval = dateRange.length <= 7 ? 0 : dateRange.length <= 14 ? 1 : Math.floor(dateRange.length / 8);
+
+                return (
+                  <>
+                    {/* Summary pills */}
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {roomTypes.map((rt) => (
+                        <div
+                          key={rt}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                          style={{ background: colors[rt] + '18', border: `1px solid ${colors[rt]}40` }}
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ background: colors[rt] }} />
+                          <span style={{ color: colors[rt] }}>{rt}</span>
+                          <span style={{ color: colors[rt] }}>↑{totalsIn[rt]}</span>
+                          <span style={{ color: colors[rt], opacity: 0.6 }}>↓{totalsOut[rt]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Legend */}
+                    <div className="flex items-center gap-5 mb-4 px-1">
+                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400">
+                        <span className="w-3 h-2 rounded-sm inline-block" style={{ background: '#06b6d4', opacity: 0.9 }} />
+                        Check-In (solid)
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400">
+                        <span className="w-3 h-2 rounded-sm inline-block" style={{ background: '#06b6d4', opacity: 0.35 }} />
+                        Check-Out (faded)
+                      </span>
+                    </div>
+
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart
+                        data={chartData}
+                        margin={{ top: 8, right: 8, left: -8, bottom: dateRange.length > 14 ? 40 : 20 }}
+                        barCategoryGap="28%"
+                        barGap={1}
+                      >
+                        <defs>
+                          {roomTypes.map((rt) => (
+                            <linearGradient key={`in-${rt}`} id={`grad-in-${rt.replace(/ /g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={colors[rt]} stopOpacity={0.95} />
+                              <stop offset="100%" stopColor={colors[rt]} stopOpacity={0.65} />
+                            </linearGradient>
+                          ))}
+                          {roomTypes.map((rt) => (
+                            <linearGradient key={`out-${rt}`} id={`grad-out-${rt.replace(/ /g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={colors[rt]} stopOpacity={0.38} />
+                              <stop offset="100%" stopColor={colors[rt]} stopOpacity={0.18} />
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="2 4" stroke={isDark ? '#1e2a3a' : '#e2e8f0'} vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          interval={tickInterval}
+                          angle={dateRange.length > 14 ? -40 : 0}
+                          textAnchor={dateRange.length > 14 ? 'end' : 'middle'}
+                          tick={{ fill: isDark ? '#4b5563' : '#94a3b8', fontSize: 10, fontWeight: 500 }}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          tickLine={false}
+                          axisLine={false}
+                          width={24}
+                          tick={{ fill: isDark ? '#4b5563' : '#94a3b8', fontSize: 10 }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: '14px',
+                            background: isDark ? '#0f141c' : '#ffffff',
+                            border: `1px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
+                            fontSize: '11px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                            color: isDark ? '#e2e8f0' : '#1e293b',
+                            padding: '10px 14px',
+                          }}
+                          itemStyle={{ paddingBlock: '2px' }}
+                          cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
+                          formatter={(value: number, name: string) => {
+                            const isOut = (name as string).endsWith('_out');
+                            const rtName = (name as string).replace(/_in$|_out$/, '');
+                            return [`${value}`, `${rtName} ${isOut ? '↓ Check-Out' : '↑ Check-In'}`];
+                          }}
+                        />
+                        {roomTypes.map((rt) => (
+                          <Bar key={`${rt}_in`} dataKey={`${rt}_in`} name={`${rt}_in`}
+                            fill={`url(#grad-in-${rt.replace(/ /g, '')})`} radius={[4, 4, 0, 0]} maxBarSize={11} />
+                        ))}
+                        {roomTypes.map((rt) => (
+                          <Bar key={`${rt}_out`} dataKey={`${rt}_out`} name={`${rt}_out`}
+                            fill={`url(#grad-out-${rt.replace(/ /g, '')})`} radius={[4, 4, 0, 0]} maxBarSize={11} />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

@@ -36,6 +36,7 @@ export interface BookingRecord {
   price: number;
   createdAt: string;
   checkedInAt?: string | null;
+  checkedOutAt?: string | null;
 }
 
 export interface DayBookingStat {

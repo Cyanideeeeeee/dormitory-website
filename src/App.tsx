@@ -21,6 +21,8 @@ export default function App() {
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
+  // Prevents flashing the login page while we check for an existing session
+  const [initializing, setInitializing] = useState(true);
 
   // ── Dark mode (UI preference — still kept in localStorage) ───
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -44,6 +46,30 @@ export default function App() {
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // ── Check for existing Supabase session on mount ────────────
+  useEffect(() => {
+    // getSession checks localStorage for a valid Supabase token
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionStatus('logged_in');
+      } else {
+        setSessionStatus('logged_out');
+      }
+      setInitializing(false);
+    });
+
+    // Also listen for auth changes (login/logout from other tabs)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setSessionStatus('logged_in');
+      } else {
+        setSessionStatus('logged_out');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // ── Fetch all data when user logs in ────────────────────────
@@ -82,6 +108,7 @@ export default function App() {
       price: row.price,
       createdAt: row.created_at,
       checkedInAt: row.checked_in_at ?? null,
+      checkedOutAt: row.checked_out_at ?? null,
     }));
     setBookings(mapped);
   };
@@ -165,7 +192,7 @@ export default function App() {
       check_out_date: newBooking.checkOutDate,
       status: newBooking.status,
       price: newBooking.price,
-      created_at: newBooking.createdAt,
+      created_at: new Date().toISOString(),
     });
 
     if (error) {
@@ -182,15 +209,11 @@ export default function App() {
 
   // ── Update booking status → Supabase ────────────────────────
   const handleUpdateBookingStatus = async (id: string, status: BookingStatus) => {
-    const now = new Date().toLocaleString('en-PH', {
-      month: 'short', day: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-    });
+    const nowISO = new Date().toISOString();
 
     const updatePayload: any = { status };
-    if (status === 'Checked-in') {
-      updatePayload.checked_in_at = now;
-    }
+    if (status === 'Checked-in') updatePayload.checked_in_at = nowISO;
+    if (status === 'Checked-out') updatePayload.checked_out_at = nowISO;
 
     const { error } = await supabase
       .from('bookings')
@@ -205,15 +228,14 @@ export default function App() {
 
     const booking = bookings.find((b) => b.id === id);
     if (booking) {
+      // Decrement when cancelling or checking out (frees the slot)
       if (
         (status === 'Checked-out' || status === 'Cancelled') &&
         (booking.status === 'Checked-in' || booking.status === 'Pending')
       ) {
         await updateRoomOccupancy(booking.roomType, 'decrement');
       }
-      if (status === 'Checked-in' && booking.status === 'Pending') {
-        await updateRoomOccupancy(booking.roomType, 'increment');
-      }
+      // Do NOT increment on Checked-in — slot was already occupied when booking was created (Pending)
     }
 
     await fetchAllData();
@@ -275,6 +297,15 @@ export default function App() {
   };
   const handleToggleDark = () => setIsDark((prev) => !prev);
 
+  // ── Initializing — wait for session check before rendering ──
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-[#fafbfc] dark:bg-[#090d14] flex items-center justify-center">
+        <LoadingSpinner label="Loading..." size="md" />
+      </div>
+    );
+  }
+
   // ── Login gate ───────────────────────────────────────────────
   if (sessionStatus === 'logged_out') {
     return <LoginPage onLogin={handleLogin} />;
@@ -289,7 +320,7 @@ export default function App() {
         isDark={isDark}
         onToggleDark={handleToggleDark}
         onLogout={handleLogout}
-        adminName="Maria Santos"
+        adminName="Arnel Domondon"
       />
 
       <main className="ml-64 min-h-screen p-6 md:p-8 bg-grid-pattern">
