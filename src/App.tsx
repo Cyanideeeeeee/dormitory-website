@@ -21,8 +21,6 @@ export default function App() {
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
-  // Prevents flashing the login page while we check for an existing session
-  const [initializing, setInitializing] = useState(true);
 
   // ── Dark mode (UI preference — still kept in localStorage) ───
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -46,30 +44,6 @@ export default function App() {
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  // ── Check for existing Supabase session on mount ────────────
-  useEffect(() => {
-    // getSession checks localStorage for a valid Supabase token
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSessionStatus('logged_in');
-      } else {
-        setSessionStatus('logged_out');
-      }
-      setInitializing(false);
-    });
-
-    // Also listen for auth changes (login/logout from other tabs)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setSessionStatus('logged_in');
-      } else {
-        setSessionStatus('logged_out');
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // ── Fetch all data when user logs in ────────────────────────
@@ -297,15 +271,6 @@ export default function App() {
   };
   const handleToggleDark = () => setIsDark((prev) => !prev);
 
-  // ── Initializing — wait for session check before rendering ──
-  if (initializing) {
-    return (
-      <div className="min-h-screen bg-[#fafbfc] dark:bg-[#090d14] flex items-center justify-center">
-        <LoadingSpinner label="Loading..." size="md" />
-      </div>
-    );
-  }
-
   // ── Login gate ───────────────────────────────────────────────
   if (sessionStatus === 'logged_out') {
     return <LoginPage onLogin={handleLogin} />;
@@ -323,7 +288,7 @@ export default function App() {
         adminName="Arnel Domondon"
       />
 
-      <main className="ml-64 min-h-screen p-6 md:p-8 bg-grid-pattern">
+      <main className="lg:ml-64 min-h-screen p-4 sm:p-6 md:p-8 bg-grid-pattern">
         <div className="max-w-7xl mx-auto relative min-h-[500px]">
 
           {/* Initial DB loading overlay */}

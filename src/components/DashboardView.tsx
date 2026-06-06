@@ -166,11 +166,11 @@ export default function DashboardView({
   });
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* HEADER SECTION WITH SIMULATION & CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e1e5eb] dark:border-[#212936] pb-5">
+    <div className="space-y-5 pb-12 pt-16 lg:pt-0">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#212936] pb-5">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
             Dashboard
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-semibold flex items-center gap-1.5">
@@ -179,26 +179,26 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* INTERACTIVE FLOATING FILTER SHEET bar */}
-      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      {/* INTERACTIVE FILTER BAR */}
+      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200 dark:border-slate-600/80 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal className="w-4 h-4 text-cyan-500" />
+          <SlidersHorizontal className="w-4 h-4 text-cyan-500 shrink-0" />
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest font-display">
             Interactive Filters
           </span>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Room type filter */}
-          <div className="flex items-center gap-1.5 bg-[#f1f3f6] dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200/40 dark:border-slate-800/40">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          {/* Room type filter — scrollable on mobile */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200 dark:border-slate-800/40 overflow-x-auto max-w-full">
             {(['All', 'Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setRoomCategoryFilter(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                   roomCategoryFilter === cat
-                    ? 'bg-white dark:bg-[#1a2333] text-gray-950 dark:text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
+                    ? 'bg-white dark:bg-[#1a2333] text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {cat}
@@ -207,37 +207,20 @@ export default function DashboardView({
           </div>
 
           {/* Date duration filter */}
-          <div className="flex items-center gap-1 bg-[#f1f3f6] dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200/40 dark:border-slate-800/40">
-            <button
-              onClick={() => setDateFilter('7')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                dateFilter === '7'
-                  ? 'bg-white dark:bg-[#1a2333] text-gray-950 dark:text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-950 dark:hover:text-gray-200'
-              }`}
-            >
-              7 Days
-            </button>
-            <button
-              onClick={() => setDateFilter('14')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                dateFilter === '14'
-                  ? 'bg-white dark:bg-[#1a2333] text-gray-950 dark:text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-950 dark:hover:text-gray-200'
-              }`}
-            >
-              14 Days
-            </button>
-            <button
-              onClick={() => setDateFilter('30')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                dateFilter === '30'
-                  ? 'bg-white dark:bg-[#1a2333] text-gray-950 dark:text-white shadow-sm'
-                  : 'text-gray-500 hover:text-gray-950 dark:hover:text-gray-200'
-              }`}
-            >
-              30 Days
-            </button>
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200 dark:border-slate-800/40 shrink-0">
+            {(['7', '14', '30'] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDateFilter(d)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                  dateFilter === d
+                    ? 'bg-white dark:bg-[#1a2333] text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                {d} Days
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -259,170 +242,57 @@ export default function DashboardView({
         </AnimatePresence>
 
         <div className="space-y-8">
-          {/* STATS MATRIX CARD ROW - Exactly matches layout in image (4 columns) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {/* CARD 1: New bookings */}
-            <motion.div
-              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex justify-between items-start">
-                <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
-                  <CalendarDays className="w-5 h-5 text-indigo-500" />
+          {/* STATS CARDS — 2 cols mobile, 4 cols desktop */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Pending Booking', value: newBookingsCount, icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, bg: 'bg-indigo-50 dark:bg-[#111721]', border: 'border-indigo-100 dark:border-slate-800' },
+              { label: "Today's Check-In", value: todayCheckinsCount, icon: <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />, bg: 'bg-emerald-50 dark:bg-[#111721]', border: 'border-emerald-100 dark:border-slate-800' },
+              { label: "Today's Check-Out", value: todayCheckoutsCount, icon: <ArrowRightLeft className="w-5 h-5 text-pink-500 -rotate-90" />, bg: 'bg-pink-50 dark:bg-[#111721]', border: 'border-pink-100 dark:border-slate-800' },
+              { label: "Today's Revenue", value: `₱${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`, icon: <Coins className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50 dark:bg-[#111721]', border: 'border-amber-100 dark:border-slate-800', small: true },
+            ].map((card) => (
+              <motion.div
+                key={card.label}
+                whileHover={{ y: -3, boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
+              >
+                <div className={`p-2.5 rounded-xl border ${card.bg} ${card.border} self-start shadow-xs`}>
+                  {card.icon}
                 </div>
-                {/* Horizontal Action indicator matching picture's "three dots" */}
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-md">
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full"></span>
-                </button>
-              </div>
-              <div className="mt-2">
-                <p className="text-[10px] text-[#6c7686] dark:text-[#a0aec0] uppercase font-bold tracking-widest">
-                  new Booking
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-display font-black text-gray-900 dark:text-white">
-                    {newBookingsCount}
+                <div>
+                  <p className="text-[10px] text-gray-500 dark:text-[#a0aec0] uppercase font-bold tracking-widest leading-tight">
+                    {card.label}
+                  </p>
+                  <span className={`font-display font-black text-gray-900 dark:text-white tracking-tight ${card.small ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>
+                    {card.value}
                   </span>
                 </div>
-              </div>
-            </motion.div>
-
-            {/* CARD 2: Today's check-in */}
-            <motion.div
-              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex justify-between items-start">
-                <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
-                  <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />
-                </div>
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-md">
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full"></span>
-                </button>
-              </div>
-              <div className="mt-2">
-                <p className="text-[10px] text-[#6c7686] dark:text-[#a0aec0] uppercase font-bold tracking-widest">
-                  Today's check-in
-                </p>
-                <span className="text-3xl font-display font-black text-gray-900 dark:text-white">
-                  {todayCheckinsCount}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* CARD 3: Today's check-out */}
-            <motion.div
-              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex justify-between items-start">
-                <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
-                  <ArrowRightLeft className="w-5 h-5 text-[#ff007f] -rotate-90" />
-                </div>
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-md">
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full"></span>
-                </button>
-              </div>
-              <div className="mt-2">
-                <p className="text-[10px] text-[#6c7686] dark:text-[#a0aec0] uppercase font-bold tracking-widest">
-                  Today's check-out
-                </p>
-                <span className="text-3xl font-display font-black text-gray-900 dark:text-white">
-                  {todayCheckoutsCount}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* CARD 4: Total revenue */}
-            <motion.div
-              whileHover={{ y: -3, boxShadow: "0 8px 28px rgba(0,0,0,0.22)" }} whileTap={{ scale: 0.98 }}
-              className="bg-[#f1f3f6] dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/90 shadow-sm flex flex-col justify-between h-36 relative overflow-hidden group transition-all duration-200 cursor-pointer"
-            >
-              <div className="flex justify-between items-start">
-                <div className="p-3 bg-white dark:bg-[#111721] rounded-xl border border-slate-200/40 dark:border-slate-800 shadow-xs">
-                  <Coins className="w-5 h-5 text-amber-500" />
-                </div>
-                <button className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded-md">
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full mb-0.5"></span>
-                  <span className="block w-1 h-1 bg-gray-400 dark:bg-gray-500 rounded-full"></span>
-                </button>
-              </div>
-              <div className="mt-2">
-                <p className="text-[10px] text-[#6c7686] dark:text-[#a0aec0] uppercase font-bold tracking-widest">
-                  Today's Revenue
-                </p>
-                <span className="text-2xl font-display font-black text-gray-900 dark:text-white tracking-tight">
-                  ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </motion.div>
+              </motion.div>
+            ))}
           </div>
 
-          {/* ROOM AVAILABILITY SUB-SECTION - Styled exactly as requested/mocked */}
+          {/* ROOM AVAILABILITY */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold tracking-widest text-[#535d6c] dark:text-gray-300 uppercase font-display">
+            <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
               Room Availability
             </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-              {/* Core available Card 1: Bed space */}
-              <motion.div
-                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
-                  Bed space
-                </span>
-                <span className="text-2xl font-display font-black text-gray-900 dark:text-white">
-                  {bedSpaceAvailable}
-                </span>
-              </motion.div>
-
-              {/* Core available Card 2: Solo room */}
-              <motion.div
-                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
-                  Solo room
-                </span>
-                <span className="text-2xl font-display font-black text-gray-900 dark:text-white">
-                  {soloRoomAvailable}
-                </span>
-              </motion.div>
-
-              {/* Core available Card 3: Couple room */}
-              <motion.div
-                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
-                  Couple room
-                </span>
-                <span className="text-2xl font-display font-black text-gray-900 dark:text-white">
-                  {coupleRoomAvailable}
-                </span>
-              </motion.div>
-
-              {/* Core available Card 4: Family room */}
-              <motion.div
-                whileHover={{ scale: 1.02, boxShadow: "0 6px 22px rgba(0,0,0,0.20)" }} whileTap={{ scale: 0.97 }}
-                className="bg-[#f1f3f6] dark:bg-[#1a2333] p-6 rounded-2xl border border-slate-300 dark:border-slate-600/90 flex flex-col items-center justify-center text-center space-y-2 h-28 shadow-sm transition-all duration-200 cursor-pointer"
-              >
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">
-                  Family room
-                </span>
-                <span className="text-2xl font-display font-black text-gray-900 dark:text-white">
-                  {familyRoomAvailable}
-                </span>
-              </motion.div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Bed space', value: bedSpaceAvailable, color: 'text-cyan-600 dark:text-cyan-400' },
+                { label: 'Solo room', value: soloRoomAvailable, color: 'text-violet-600 dark:text-violet-400' },
+                { label: 'Couple room', value: coupleRoomAvailable, color: 'text-amber-600 dark:text-amber-400' },
+                { label: 'Family room', value: familyRoomAvailable, color: 'text-emerald-600 dark:text-emerald-400' },
+              ].map((room) => (
+                <motion.div
+                  key={room.label}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-sm transition-all duration-200 cursor-pointer"
+                >
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">{room.label}</span>
+                  <span className={`text-2xl sm:text-3xl font-display font-black ${room.color}`}>{room.value}</span>
+                </motion.div>
+              ))}
             </div>
           </div>
 
@@ -430,7 +300,7 @@ export default function DashboardView({
           <div className="space-y-4">
             {/* Header row */}
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold tracking-widest text-[#535d6c] dark:text-gray-300 uppercase font-display">
+              <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
                 Room Statistics
               </h2>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
@@ -443,7 +313,7 @@ export default function DashboardView({
               </span>
             </div>
 
-            <div className="bg-white dark:bg-[#0f141c] p-5 rounded-2xl border border-slate-300 dark:border-slate-600/80 shadow-sm">
+            <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-600/80 shadow-sm overflow-x-auto">
               {/* Legend + summary pills */}
               {(() => {
                 const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
@@ -602,8 +472,8 @@ export default function DashboardView({
 
           {/* BOOK STATISTICS CHART CONTAINER */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold tracking-widest text-[#535d6c] dark:text-gray-300 uppercase font-display">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
                 Book Statistics
               </h2>
               {roomCategoryFilter !== 'All' && (
@@ -613,8 +483,8 @@ export default function DashboardView({
               )}
             </div>
 
-            <div className="bg-[#f1f3f6]/80 dark:bg-[#141b25] p-5 rounded-2xl border border-slate-200/50 dark:border-slate-800/70 shadow-2xs">
-              <div className="h-72 w-full">
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800/70 shadow-sm">
+              <div className="h-56 sm:h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
                     data={filteredTimelineStats}
