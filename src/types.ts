@@ -38,6 +38,9 @@ export interface BookingRecord {
   createdAt: string;
   checkedInAt?: string | null;
   checkedOutAt?: string | null;
+  paymentMode?: 'Cash' | 'GCash';
+  referenceNumber?: string;
+  idImageUrl?: string | null;
 }
 
 export interface DayBookingStat {

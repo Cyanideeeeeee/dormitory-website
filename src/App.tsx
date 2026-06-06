@@ -75,6 +75,8 @@ export default function App() {
       guestName: row.guest_name,
       email: row.email,
       contactNumber: row.contact_number ?? '',
+      paymentMode: row.payment_mode ?? 'Cash',
+      referenceNumber: row.reference_number ?? '',
       roomType: row.room_type,
       roomNumber: row.room_number,
       checkInDate: row.check_in_date,
@@ -84,6 +86,7 @@ export default function App() {
       createdAt: row.created_at,
       checkedInAt: row.checked_in_at ?? null,
       checkedOutAt: row.checked_out_at ?? null,
+      idImageUrl: row.id_image_url ?? null,
     }));
     setBookings(mapped);
   };
@@ -156,12 +159,36 @@ export default function App() {
   };
 
   // ── Add booking → Supabase ───────────────────────────────────
-  const handleAddBooking = async (newBooking: BookingRecord) => {
+  const handleAddBooking = async (newBooking: BookingRecord, idImageFile?: File | null) => {
+    let idImageUrl: string | null = null;
+
+    // Upload ID image to Supabase Storage if provided
+    if (idImageFile) {
+      const fileExt = idImageFile.name.split('.').pop();
+      const filePath = `${newBooking.id}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('guest-ids')
+        .upload(filePath, idImageFile, { upsert: true });
+
+      if (uploadError) {
+        console.error('Error uploading ID image:', uploadError.message);
+        alert('Failed to upload ID image. Booking will be saved without it.');
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('guest-ids')
+          .getPublicUrl(filePath);
+        idImageUrl = urlData.publicUrl;
+      }
+    }
+
     const { error } = await supabase.from('bookings').insert({
       id: newBooking.id,
       guest_name: newBooking.guestName,
       email: newBooking.email,
       contact_number: newBooking.contactNumber || null,
+      payment_mode: newBooking.paymentMode || 'Cash',
+      reference_number: newBooking.referenceNumber || null,
       room_type: newBooking.roomType,
       room_number: newBooking.roomNumber,
       check_in_date: newBooking.checkInDate,
@@ -169,6 +196,7 @@ export default function App() {
       status: newBooking.status,
       price: newBooking.price,
       created_at: new Date().toISOString(),
+      id_image_url: idImageUrl,
     });
 
     if (error) {

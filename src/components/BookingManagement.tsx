@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -16,7 +16,10 @@ import {
   Sparkles,
   ChevronRight,
   LogOut,
-  Eye
+  Eye,
+  ImageIcon,
+  Upload,
+  ZoomIn,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
@@ -24,7 +27,7 @@ import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
 interface BookingManagementProps {
   bookings: BookingRecord[];
   rooms: RoomRecord[];
-  onAddBooking: (booking: BookingRecord) => void;
+  onAddBooking: (booking: BookingRecord, idImageFile?: File | null) => void;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
 }
 
@@ -68,6 +71,16 @@ export default function BookingManagement({
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
   const [customPrice, setCustomPrice] = useState('');
+  const [paymentMode, setPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
+  const [referenceNumber, setReferenceNumber] = useState('');
+
+  // ID image upload state
+  const [idImageFile, setIdImageFile] = useState<File | null>(null);
+  const [idImagePreview, setIdImagePreview] = useState<string | null>(null);
+  const idFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Lightbox state — for viewing any ID image full screen
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   // Filtering list
   const filteredList = bookings.filter((b) => {
@@ -114,6 +127,16 @@ export default function BookingManagement({
   // Live auto-computed price shown in the form
   const autoComputedPrice = computePrice(formRoomType, computeNights(checkIn, checkOut));
 
+  // Handle ID image file selection
+  const handleIdImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIdImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setIdImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   // Submit Quick Booking handler
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +146,11 @@ export default function BookingManagement({
     }
     if (contactNumber && contactNumber.length !== 11) {
       alert('Contact number must be exactly 11 digits.');
+      return;
+    }
+
+    if (paymentMode === 'GCash' && !referenceNumber.trim()) {
+      alert('Please enter the GCash Reference Number.');
       return;
     }
 
@@ -143,10 +171,12 @@ export default function BookingManagement({
       checkOutDate: checkOut,
       status: 'Pending',
       price: computedPrice,
+      paymentMode,
+      referenceNumber: paymentMode === 'GCash' ? referenceNumber.trim() : '',
       createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
     };
 
-    onAddBooking(newBooking);
+    onAddBooking(newBooking, idImageFile);
 
     // Reset Form
     setFirstName('');
@@ -157,6 +187,11 @@ export default function BookingManagement({
     setFormRoomType('Bed space');
     setGuestRoomNumber('101');
     setCustomPrice('');
+    setPaymentMode('Cash');
+    setReferenceNumber('');
+    setIdImageFile(null);
+    setIdImagePreview(null);
+    if (idFileInputRef.current) idFileInputRef.current.value = '';
     setIsFormOpen(false);
   };
 
@@ -281,7 +316,7 @@ export default function BookingManagement({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 dark:bg-[#0f141c] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-800/60">
-                <th className="py-4 px-6">ID & Guest</th>
+                <th className="py-4 px-6">Borders Name</th>
                 <th className="py-4 px-4">Room Alloc</th>
                 <th className="py-4 px-4">Check In/Out</th>
                 <th className="py-4 px-4">Cost / Night</th>
@@ -301,7 +336,7 @@ export default function BookingManagement({
                     transition={{ duration: 0.2 }}
                     className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
                   >
-                    {/* Guest Name & ID */}
+                    {/* Border Name & ID */}
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
                         <div className="w-9 h-9 rounded-full bg-cyan-100 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold text-xs">
@@ -446,7 +481,7 @@ export default function BookingManagement({
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-500" />
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display">
-                      Create Guest Booking
+                      Create Border Booking
                     </h2>
                   </div>
                   <button
@@ -466,7 +501,7 @@ export default function BookingManagement({
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5" />
-                      Guest Name
+                      Border Name
                     </label>
                     {/* First + Last on same row */}
                     <div className="grid grid-cols-2 gap-2">
@@ -500,16 +535,16 @@ export default function BookingManagement({
                     />
                   </div>
 
-                  {/* Guest email — optional */}
+                  {/* Border email — optional */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5" />
-                      Guest Email Address
+                      Border Email Address
                     </label>
                     <input
                       id="form-guest-email"
                       type="email"
-                      placeholder="Guest Email Address"
+                      placeholder="Border Email Address"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
                       className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
@@ -614,6 +649,47 @@ export default function BookingManagement({
                     </div>
                   </div>
 
+                  {/* Mode of Payment */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5" />
+                      Mode of Payment
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['Cash', 'GCash'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => { setPaymentMode(mode); setReferenceNumber(''); }}
+                          className={`py-2.5 rounded-xl text-sm font-bold border transition-all duration-150 ${
+                            paymentMode === mode
+                              ? mode === 'GCash'
+                                ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                                : 'bg-cyan-500 border-cyan-500 text-white shadow-sm'
+                              : 'bg-gray-50 dark:bg-[#0f141c] border-slate-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:border-cyan-400'
+                          }`}
+                        >
+                          {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                        </button>
+                      ))}
+                    </div>
+                    {/* GCash Reference Number */}
+                    {paymentMode === 'GCash' && (
+                      <div className="space-y-1.5 pt-1">
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display">
+                          GCash Reference Number <span className="text-rose-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter GCash reference number"
+                          value={referenceNumber}
+                          onChange={(e) => setReferenceNumber(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-blue-300 dark:border-blue-800 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   {/* Auto-computed price preview */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
@@ -630,6 +706,66 @@ export default function BookingManagement({
                       </span>
                     </div>
 
+                  </div>
+
+                  {/* ID Image Upload */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      Valid ID 
+                    </label>
+
+                    {/* Upload area */}
+                    {!idImagePreview ? (
+                      <button
+                        type="button"
+                        onClick={() => idFileInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
+                      >
+                        <Upload className="w-6 h-6" />
+                        <span className="text-xs font-semibold">Click to upload ID photo</span>
+                        <span className="text-[10px] text-gray-300 dark:text-gray-600">JPG, PNG, WEBP — max 5MB</span>
+                      </button>
+                    ) : (
+                      <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                        <img
+                          src={idImagePreview}
+                          alt="ID Preview"
+                          className="w-full h-40 object-cover"
+                        />
+                        {/* Overlay on hover */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setLightboxUrl(idImagePreview)}
+                            className="p-2 bg-white/20 hover:bg-white/30 rounded-xl text-white transition-colors"
+                            title="View full size"
+                          >
+                            <ZoomIn className="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setIdImageFile(null); setIdImagePreview(null); if (idFileInputRef.current) idFileInputRef.current.value = ''; }}
+                            className="p-2 bg-rose-500/80 hover:bg-rose-500 rounded-xl text-white transition-colors"
+                            title="Remove image"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <span className="absolute bottom-2 left-2 text-[10px] bg-black/60 text-white px-2 py-0.5 rounded-full font-semibold">
+                          {idImageFile?.name}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={idFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleIdImageChange}
+                    />
                   </div>
 
                   {/* Amenities */}
@@ -724,12 +860,12 @@ export default function BookingManagement({
                   {getStatusBadge(selectedBooking.status)}
                 </div>
 
-                {/* Guest info */}
+                {/* Border info */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
                     <User className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Guest Name</p>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Border Name</p>
                       <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.guestName}</p>
                     </div>
                   </div>
@@ -788,14 +924,58 @@ export default function BookingManagement({
 
                   <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-100 dark:border-cyan-900/40">
                     <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total Price</p>
                       <p className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
                         ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </p>
                     </div>
+                    {(selectedBooking as any).paymentMode && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                        (selectedBooking as any).paymentMode === 'GCash'
+                          ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                          : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {(selectedBooking as any).paymentMode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                      </span>
+                    )}
                   </div>
+
+                  {/* GCash Reference Number */}
+                  {(selectedBooking as any).paymentMode === 'GCash' && (selectedBooking as any).referenceNumber && (
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40">
+                      <Hash className="w-4 h-4 text-blue-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
+                        <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{(selectedBooking as any).referenceNumber}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* ID Image */}
+                {selectedBooking.idImageUrl && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-cyan-500" />
+                      Valid ID
+                    </p>
+                    <div
+                      className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      onClick={() => setLightboxUrl(selectedBooking.idImageUrl!)}
+                    >
+                      <img
+                        src={selectedBooking.idImageUrl}
+                        alt="Guest ID"
+                        className="w-full h-36 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <ZoomIn className="w-6 h-6 text-white" />
+                        <span className="text-white text-xs font-bold">Click to view</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Check-in / Check-out timestamps */}
                 <div className="space-y-1.5">
@@ -831,6 +1011,43 @@ export default function BookingManagement({
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+      {/* LIGHTBOX — Full screen ID image viewer */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative max-w-3xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close button */}
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute -top-4 -right-4 z-10 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={lightboxUrl}
+                alt="ID Full View"
+                className="w-full rounded-2xl shadow-2xl object-contain max-h-[80vh]"
+              />
+              <p className="text-center text-white/50 text-xs mt-3 font-medium">
+                Click outside or × to close
+              </p>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
