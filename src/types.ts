@@ -28,6 +28,7 @@ export interface BookingRecord {
   id: string;
   guestName: string;
   email: string;
+  contactNumber?: string;
   roomType: RoomType;
   roomNumber: string;
   checkInDate: string;

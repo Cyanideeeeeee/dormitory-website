@@ -20,7 +20,7 @@ export default function Sidebar({
   adminName,
 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const logoPath = '/src/assets/images/ak_seafarers_logo_1780495377476.png';
+  const logoPath = '/src/assets/images/logo.png';
 
   const menuItems = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },

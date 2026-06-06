@@ -16,21 +16,25 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      setError("Please enter your email and password.");
+      setError("Please enter your username and password.");
       return;
     }
     setLoading(true);
     setError("");
 
+    // Convert plain username to fake email format for Supabase Auth
+    const raw = username.trim().toLowerCase();
+    const email = raw.includes('@') ? raw : `${raw}@seafarers.local`;
+
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email: username.trim(),
+      email,
       password: password.trim(),
     });
 
     setLoading(false);
 
     if (authError) {
-      setError("Invalid email or password. Please try again.");
+      setError("Invalid username or password. Please try again.");
       return;
     }
 

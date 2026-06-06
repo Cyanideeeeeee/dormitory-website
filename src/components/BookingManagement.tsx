@@ -51,8 +51,11 @@ export default function BookingManagement({
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   
   // Simple form fields
-  const [guestName, setGuestName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [formRoomType, setFormRoomType] = useState<RoomType>('Bed space');
   const [guestRoomNumber, setGuestRoomNumber] = useState('101');
   const todayStr = () => new Date().toISOString().split('T')[0];
@@ -114,10 +117,16 @@ export default function BookingManagement({
   // Submit Quick Booking handler
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName || !guestEmail) {
-      alert('Please fill out guest name and email.');
+    if (!firstName.trim() || !lastName.trim()) {
+      alert('Please fill out First Name and Last Name.');
       return;
     }
+    if (contactNumber && contactNumber.length !== 11) {
+      alert('Contact number must be exactly 11 digits.');
+      return;
+    }
+
+    const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(' ');
 
     // Use override price if provided, otherwise use auto-computed price
     const nights = computeNights(checkIn, checkOut);
@@ -125,8 +134,9 @@ export default function BookingManagement({
 
     const newBooking: BookingRecord = {
       id: `bk-${Date.now().toString().slice(-4)}`,
-      guestName,
+      guestName: fullName,
       email: guestEmail,
+      contactNumber: contactNumber || '',
       roomType: formRoomType,
       roomNumber: guestRoomNumber || `${100 + Math.floor(Math.random() * 100)}`,
       checkInDate: checkIn,
@@ -137,10 +147,13 @@ export default function BookingManagement({
     };
 
     onAddBooking(newBooking);
-    
+
     // Reset Form
-    setGuestName('');
+    setFirstName('');
+    setMiddleName('');
+    setLastName('');
     setGuestEmail('');
+    setContactNumber('');
     setFormRoomType('Bed space');
     setGuestRoomNumber('101');
     setCustomPrice('');
@@ -296,12 +309,6 @@ export default function BookingManagement({
                         </div>
                         <div>
                           <p className="font-bold text-gray-900 dark:text-white text-sm">{bk.guestName}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
-                            <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 py-0.5 px-1.5 rounded">
-                              {bk.id}
-                            </span>
-                            <span className="truncate max-w-[150px]">{bk.email}</span>
-                          </p>
                         </div>
                       </div>
                     </td>
@@ -455,24 +462,45 @@ export default function BookingManagement({
                   onSubmit={handleFormSubmit}
                   className="flex-1 overflow-y-auto p-6 space-y-5"
                 >
-                  {/* Guest name */}
+                  {/* Name fields */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5" />
-                      Guest Full Name
+                      Guest Name
                     </label>
+                    {/* First + Last on same row */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        id="form-first-name"
+                        type="text"
+                        required
+                        placeholder="First Name *"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      />
+                      <input
+                        id="form-last-name"
+                        type="text"
+                        required
+                        placeholder="Last Name *"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      />
+                    </div>
+                    {/* Middle name full width */}
                     <input
-                      id="form-guest-name"
+                      id="form-middle-name"
                       type="text"
-                      required
-                      placeholder="Guest Full Name"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      placeholder="Middle Name"
+                      value={middleName}
+                      onChange={(e) => setMiddleName(e.target.value)}
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                     />
                   </div>
 
-                  {/* Guest email */}
+                  {/* Guest email — optional */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5" />
@@ -481,12 +509,36 @@ export default function BookingManagement({
                     <input
                       id="form-guest-email"
                       type="email"
-                      required
                       placeholder="Guest Email Address"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                     />
+                  </div>
+
+                  {/* Contact Number */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                      <Hash className="w-3.5 h-3.5" />
+                      Contact Number
+                    </label>
+                    <input
+                      id="form-contact-number"
+                      type="tel"
+                      placeholder="09XXXXXXXXX"
+                      value={contactNumber}
+                      maxLength={11}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setContactNumber(val.slice(0, 11));
+                      }}
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
+                    />
+                    {contactNumber.length > 0 && contactNumber.length < 11 && (
+                      <p className="text-[10px] text-amber-500 font-medium">
+                        {11 - contactNumber.length} more digit{11 - contactNumber.length !== 1 ? 's' : ''} needed
+                      </p>
+                    )}
                   </div>
 
                   {/* Room Type Selector */}
@@ -686,7 +738,15 @@ export default function BookingManagement({
                     <Mail className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email || '—'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                    <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contact Number</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white font-mono">{(selectedBooking as any).contactNumber || '—'}</p>
                     </div>
                   </div>
 
