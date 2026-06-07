@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  AreaChart,
-  Area,
   LineChart,
   Line
 } from 'recharts';
@@ -22,7 +21,8 @@ import {
   HelpCircle,
   TrendingUp,
   SlidersHorizontal,
-  Users
+  Users,
+  BarChart2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, RoomRecord, DayBookingStat, RoomType } from '../types';
@@ -43,12 +43,11 @@ export default function DashboardView({
 }: DashboardViewProps) {
   // ✅ FIX 3: Chart colors that respond to dark mode
   const chartGrid   = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
-  const chartAxis   = isDark ? '#64748b' : '#888888';
+  const chartAxis   = isDark ? '#cbd5e1' : '#888888';
   const tooltipBg   = isDark ? '#1a2333' : '#ffffff';
   const tooltipBorder = isDark ? '#2d3f55' : '#e2e8f0';
   const tooltipText = isDark ? '#e2e8f0' : '#1e293b';
   // Filtering state
-  const [dateFilter, setDateFilter] = useState<'7' | '14' | '30'>('7');
   const [roomCategoryFilter, setRoomCategoryFilter] = useState<'All' | RoomType>('All');
   const [localLoading, setLocalLoading] = useState(false);
   const [todayDate, setTodayDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -72,7 +71,7 @@ export default function DashboardView({
     setLocalLoading(true);
     const timer = setTimeout(() => setLocalLoading(false), 350);
     return () => clearTimeout(timer);
-  }, [dateFilter, roomCategoryFilter]);
+  }, [roomCategoryFilter]);
 
   // Derived Statistics based on current state & filters
   const filteredBookings = bookings.filter((b) => {
@@ -131,44 +130,55 @@ export default function DashboardView({
     };
   });
 
-  // Chart 2: Booking Statistics (Revenue & Bookings Trend)
-  // Let's filter the historical stats array to simulate different date ranges
-  const filteredTimelineStats = bookingStats.slice(
-    dateFilter === '7' ? -7 : dateFilter === '14' ? -14 : -30
-  ).map(stat => {
-    // If a roomType filter is applied, scale revenue/bookings down proportionally to represent selection
-    if (roomCategoryFilter === 'Bed space') {
-      return {
-        ...stat,
-        bookings: Math.round(stat.bookings * 0.3),
-        revenue: Math.round(stat.revenue * 0.2),
-      };
-    } else if (roomCategoryFilter === 'Solo room') {
-      return {
-        ...stat,
-        bookings: Math.round(stat.bookings * 0.4),
-        revenue: Math.round(stat.revenue * 0.4),
-      };
-    } else if (roomCategoryFilter === 'Couple room') {
-      return {
-        ...stat,
-        bookings: Math.round(stat.bookings * 0.3),
-        revenue: Math.round(stat.revenue * 0.4),
-      };
-    } else if (roomCategoryFilter === 'Family room') {
-      return {
-        ...stat,
-        bookings: Math.round(stat.bookings * 0.25),
-        revenue: Math.round(stat.revenue * 0.35),
-      };
-    }
-    return stat;
+  // Chart 2: Monthly Booking Statistics for 2026 — check-ins per month from real bookings
+  const monthlyBookingData = ([ 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' ] as const).map((month, idx) => {
+    const monthStr = `2026-${String(idx + 1).padStart(2, '0')}`;
+    const count = bookings.filter((b) => {
+      const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
+      const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
+      return isConfirmed && checkedInMonth === monthStr;
+    }).length;
+    return { month, count };
   });
+  const totalYearBookings = monthlyBookingData.reduce((s, d) => s + d.count, 0);
+  const peakBookingMonth = monthlyBookingData.reduce(
+    (best, d) => (d.count > best.count ? d : best),
+    monthlyBookingData[0]
+  );
+
+  // Chart 3: Monthly Revenue for 2026 — derived from real checked-in/checked-out bookings
+  const MONTHS = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ] as const;
+
+  const monthlyRevenueData = MONTHS.map((month, idx) => {
+    const monthStr = `2026-${String(idx + 1).padStart(2, '0')}`;
+    const revenue = bookings
+      .filter((b) => {
+        const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
+        const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
+        return isConfirmed && checkedInMonth === monthStr;
+      })
+      .reduce((sum, b) => sum + b.price, 0);
+    const checkIns = bookings.filter((b) => {
+      const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
+      const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
+      return isConfirmed && checkedInMonth === monthStr;
+    }).length;
+    return { month, revenue, checkIns };
+  });
+
+  const totalYearRevenue = monthlyRevenueData.reduce((s, d) => s + d.revenue, 0);
+  const peakMonth = monthlyRevenueData.reduce(
+    (best, d) => (d.revenue > best.revenue ? d : best),
+    monthlyRevenueData[0]
+  );
 
   return (
     <div className="space-y-5 pb-12 pt-16 lg:pt-0">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#212936] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
             Dashboard
@@ -180,7 +190,7 @@ export default function DashboardView({
       </div>
 
       {/* INTERACTIVE FILTER BAR */}
-      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200 dark:border-slate-600/80 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-cyan-500 shrink-0" />
           <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest font-display">
@@ -190,7 +200,7 @@ export default function DashboardView({
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
           {/* Room type filter — scrollable on mobile */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200 dark:border-slate-800/40 overflow-x-auto max-w-full">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-x-auto max-w-full">
             {(['All', 'Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((cat) => (
               <button
                 key={cat}
@@ -206,22 +216,7 @@ export default function DashboardView({
             ))}
           </div>
 
-          {/* Date duration filter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border border-slate-200 dark:border-slate-800/40 shrink-0">
-            {(['7', '14', '30'] as const).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDateFilter(d)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  dateFilter === d
-                    ? 'bg-white dark:bg-[#1a2333] text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                {d} Days
-              </button>
-            ))}
-          </div>
+
         </div>
       </div>
 
@@ -245,18 +240,18 @@ export default function DashboardView({
           {/* STATS CARDS — 2 cols mobile, 4 cols desktop */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Pending Booking', value: newBookingsCount, icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, bg: 'bg-indigo-50 dark:bg-[#111721]', border: 'border-indigo-100 dark:border-slate-800' },
-              { label: "Today's Check-In", value: todayCheckinsCount, icon: <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />, bg: 'bg-emerald-50 dark:bg-[#111721]', border: 'border-emerald-100 dark:border-slate-800' },
-              { label: "Today's Check-Out", value: todayCheckoutsCount, icon: <ArrowRightLeft className="w-5 h-5 text-pink-500 -rotate-90" />, bg: 'bg-pink-50 dark:bg-[#111721]', border: 'border-pink-100 dark:border-slate-800' },
-              { label: "Today's Revenue", value: `₱${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`, icon: <Coins className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50 dark:bg-[#111721]', border: 'border-amber-100 dark:border-slate-800', small: true },
+              { label: 'Pending Booking', value: newBookingsCount, icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, bg: 'bg-indigo-50 dark:bg-[#111721]', border: 'border-indigo-300 dark:border-slate-700' },
+              { label: "Today's Check-In", value: todayCheckinsCount, icon: <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />, bg: 'bg-emerald-50 dark:bg-[#111721]', border: 'border-emerald-300 dark:border-slate-700' },
+              { label: "Today's Check-Out", value: todayCheckoutsCount, icon: <ArrowRightLeft className="w-5 h-5 text-pink-500 -rotate-90" />, bg: 'bg-pink-50 dark:bg-[#111721]', border: 'border-pink-300 dark:border-slate-700' },
+              { label: "Today's Revenue", value: `₱${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`, icon: <Coins className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50 dark:bg-[#111721]', border: 'border-amber-300 dark:border-slate-700', small: true },
             ].map((card) => (
               <motion.div
                 key={card.label}
                 whileHover={{ y: -3, boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
+                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
               >
-                <div className={`p-2.5 rounded-xl border ${card.bg} ${card.border} self-start shadow-xs`}>
+                <div className={`p-2.5 rounded-xl border-2 ${card.bg} ${card.border} self-start shadow-xs`}>
                   {card.icon}
                 </div>
                 <div>
@@ -287,7 +282,7 @@ export default function DashboardView({
                   key={room.label}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
-                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-sm transition-all duration-200 cursor-pointer"
+                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-sm transition-all duration-200 cursor-pointer"
                 >
                   <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">{room.label}</span>
                   <span className={`text-2xl sm:text-3xl font-display font-black ${room.color}`}>{room.value}</span>
@@ -304,16 +299,11 @@ export default function DashboardView({
                 Room Statistics
               </h2>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                {dateFilter === '7'
-                  ? (() => { const d = new Date(); d.setDate(d.getDate() - 6); return `${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – Today`; })()
-                  : dateFilter === '14'
-                  ? (() => { const d = new Date(); d.setDate(d.getDate() - 13); return `${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – Today`; })()
-                  : (() => { const now = new Date(); return `${now.toLocaleDateString('en-US',{month:'long'})} 1 – ${now.toLocaleDateString('en-US',{month:'long',day:'numeric'})}`; })()
-                }
+                {(() => { const now = new Date(); return `${now.toLocaleDateString('en-US',{month:'long'})} 1 – ${now.toLocaleDateString('en-US',{month:'long',day:'numeric'})}`; })()}
               </span>
             </div>
 
-            <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-600/80 shadow-sm overflow-x-auto">
+            <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm overflow-x-auto">
               {/* Legend + summary pills */}
               {(() => {
                 const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
@@ -326,10 +316,10 @@ export default function DashboardView({
 
                 // Build date range: 7/14 days = rolling back N days; 30 days = 1st of current month → today
                 const now = new Date();
-                const days = parseInt(dateFilter);
+                const days = 30;
                 const dateRange: string[] = [];
 
-                if (dateFilter === '30') {
+                if (true) {
                   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                   const cursor = new Date(firstOfMonth);
                   while (cursor <= now) {
@@ -427,14 +417,14 @@ export default function DashboardView({
                           interval={tickInterval}
                           angle={dateRange.length > 14 ? -40 : 0}
                           textAnchor={dateRange.length > 14 ? 'end' : 'middle'}
-                          tick={{ fill: isDark ? '#4b5563' : '#94a3b8', fontSize: 10, fontWeight: 500 }}
+                          tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10, fontWeight: 500 }}
                         />
                         <YAxis
                           allowDecimals={false}
                           tickLine={false}
                           axisLine={false}
                           width={24}
-                          tick={{ fill: isDark ? '#4b5563' : '#94a3b8', fontSize: 10 }}
+                          tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
                         />
                         <Tooltip
                           contentStyle={{
@@ -470,95 +460,249 @@ export default function DashboardView({
             </div>
           </div>
 
-          {/* BOOK STATISTICS CHART CONTAINER */}
+          {/* MONTHLY BOOKING STATISTICS CHART */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
-                Book Statistics
-              </h2>
-              {roomCategoryFilter !== 'All' && (
-                <span className="text-[10px] text-cyan-600 bg-cyan-100 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold">
-                  Pro-rated: {roomCategoryFilter}
-                </span>
-              )}
-            </div>
-
-            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800/70 shadow-sm">
-              <div className="h-56 sm:h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={filteredTimelineStats}
-                    margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ec4899" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#ec4899" stopOpacity={0.01} />
-                      </linearGradient>
-                      <linearGradient id="colorBookings" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.01} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} opacity={0.8} />
-                    <XAxis
-                      dataKey="date"
-                      stroke={chartAxis}
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      yAxisId="left"
-                      stroke={chartAxis}
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      yAxisId="right"
-                      orientation="right"
-                      stroke={chartAxis}
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        borderRadius: '12px',
-                        background: tooltipBg,
-                        border: `1px solid ${tooltipBorder}`,
-                        fontSize: '11px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        color: tooltipText,
-                      }}
-                    />
-                    <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} />
-                    <Area
-                      yAxisId="left"
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#ec4899"
-                      fillOpacity={1}
-                      fill="url(#colorRevenue)"
-                      name="Revenue (₱)"
-                      strokeWidth={2}
-                    />
-                    <Area
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="bookings"
-                      stroke="#06b6d4"
-                      fillOpacity={1}
-                      fill="url(#colorBookings)"
-                      name="Total Bookings"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div>
+                <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-cyan-500" />
+                  Monthly Booking Statistics
+                </h2>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                  January – December 2026
+                </p>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
+                  <span className="text-gray-400 dark:text-gray-500">2026 Total:</span>
+                  <span className="text-cyan-600 dark:text-cyan-400 font-black">
+                    {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                {totalYearBookings > 0 && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                    <TrendingUp className="w-3 h-3 text-violet-500" />
+                    <span className="text-gray-400 dark:text-gray-500">Peak:</span>
+                    <span className="text-violet-600 dark:text-violet-400 font-black">
+                      {peakBookingMonth.month} · {peakBookingMonth.count}
+                    </span>
+                  </div>
+                )}
+                {roomCategoryFilter !== 'All' && (
+                  <span className="text-[10px] text-cyan-600 bg-cyan-100 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold">
+                    {roomCategoryFilter}
+                  </span>
+                )}
               </div>
             </div>
+
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-400 rounded-t-2xl" />
+              <div className="h-64 sm:h-80 w-full pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={monthlyBookingData}
+                    margin={{ top: 16, right: 16, left: 8, bottom: 4 }}
+                    barCategoryGap="28%"
+                  >
+                    <defs>
+                      <linearGradient id="gradMonthlyBookings" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="2 4"
+                      stroke={isDark ? '#1e2a3a' : '#e2e8f0'}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 11, fontWeight: 600 }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      width={32}
+                      tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', radius: 8 }}
+                      contentStyle={{
+                        borderRadius: '14px',
+                        background: isDark ? '#0f141c' : '#ffffff',
+                        border: `1.5px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
+                        fontSize: '11px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        padding: '10px 14px',
+                      }}
+                      formatter={(value: number) => [
+                        `${value} check-in${value !== 1 ? 's' : ''}`,
+                        'Bookings',
+                      ]}
+                      labelStyle={{
+                        fontWeight: 700,
+                        marginBottom: '6px',
+                        fontSize: '12px',
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                      {monthlyBookingData.map((entry, index) => (
+                        <Cell
+                          key={`cell-bk-${index}`}
+                          fill={entry.count > 0 ? 'url(#gradMonthlyBookings)' : (isDark ? '#1e2a3a' : '#f1f5f9')}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {totalYearBookings === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center space-y-1">
+                    <TrendingUp className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-semibold">
+                      No check-ins recorded for 2026 yet
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* MONTHLY REVENUE CHART — 2026 */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-emerald-500" />
+                  Monthly Revenue
+                </h2>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                  January – December 2026
+                </p>
+              </div>
+
+              {/* Summary pills */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                  <span className="text-gray-400 dark:text-gray-500">2026 Total:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                    ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {totalYearRevenue > 0 && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                    <TrendingUp className="w-3 h-3 text-amber-500" />
+                    <span className="text-gray-400 dark:text-gray-500">Peak:</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-black">
+                      {peakMonth.month} · ₱{peakMonth.revenue.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden relative">
+              {/* Gradient accent top bar */}
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 rounded-t-2xl" />
+
+              <div className="h-64 sm:h-80 w-full pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={monthlyRevenueData}
+                    margin={{ top: 16, right: 16, left: 8, bottom: 4 }}
+                    barCategoryGap="28%"
+                  >
+                    <defs>
+                      <linearGradient id="gradMonthlyRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.7} />
+                      </linearGradient>
+                      <linearGradient id="gradMonthlyRevEmpty" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={isDark ? '#1e2a3a' : '#f1f5f9'} stopOpacity={1} />
+                        <stop offset="100%" stopColor={isDark ? '#141b25' : '#e2e8f0'} stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="2 4"
+                      stroke={isDark ? '#1e2a3a' : '#e2e8f0'}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 11, fontWeight: 600 }}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      width={56}
+                      tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
+                      tickFormatter={(v) =>
+                        v === 0 ? '₱0' : v >= 1000 ? `₱${(v / 1000).toFixed(0)}k` : `₱${v}`
+                      }
+                    />
+                    <Tooltip
+                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', radius: 8 }}
+                      contentStyle={{
+                        borderRadius: '14px',
+                        background: isDark ? '#0f141c' : '#ffffff',
+                        border: `1.5px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
+                        fontSize: '11px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        padding: '10px 14px',
+                      }}
+                      formatter={(value: number) => [
+                        `₱${(value as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                        'Revenue',
+                      ]}
+                      labelStyle={{
+                        fontWeight: 700,
+                        marginBottom: '6px',
+                        fontSize: '12px',
+                        color: isDark ? '#e2e8f0' : '#1e293b',
+                      }}
+                    />
+                    <Bar
+                      dataKey="revenue"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={48}
+                    >
+                      {monthlyRevenueData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.revenue > 0 ? 'url(#gradMonthlyRev)' : (isDark ? '#1e2a3a' : '#f1f5f9')}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Empty state hint */}
+              {totalYearRevenue === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center space-y-1">
+                    <BarChart2 className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-semibold">
+                      No revenue recorded for 2026 yet
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

@@ -220,10 +220,10 @@ export default function BookingManagement({
 
   const getStatusBadge = (status: BookingStatus) => {
     const styles = {
-      'Checked-in': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50',
-      'Checked-out': 'bg-blue-50 text-blue-700 dark:bg-slate-800/80 dark:text-slate-300 border border-blue-100 dark:border-slate-800',
-      'Pending': 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50',
-      'Cancelled': 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50',
+      'Checked-in': 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700',
+      'Checked-out': 'bg-blue-50 text-blue-700 dark:bg-slate-800/80 dark:text-slate-300 border border-blue-300 dark:border-slate-600',
+      'Pending': 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-300 dark:border-amber-700',
+      'Cancelled': 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-300 dark:border-rose-700',
     };
     return (
       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
@@ -236,7 +236,7 @@ export default function BookingManagement({
   return (
     <div className="space-y-5 pt-16 lg:pt-0">
       {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#212936] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
             Bookings
@@ -258,7 +258,7 @@ export default function BookingManagement({
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm">
         {/* Search */}
         <div className="relative sm:col-span-2">
           <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-gray-400 dark:text-gray-500" />
@@ -320,11 +320,11 @@ export default function BookingManagement({
       </div>
 
       {/* BOOKINGS TABLE */}
-      <div className="bg-white dark:bg-[#151c27] rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 dark:bg-[#0f141c] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-slate-800/60">
+              <tr className="bg-gray-50 dark:bg-[#0f141c] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b-2 border-slate-300 dark:border-slate-600">
                 <th className="py-4 px-6">Borders Name</th>
                 <th className="py-4 px-4">Room Alloc</th>
                 <th className="py-4 px-4">Check In/Out</th>
@@ -333,7 +333,7 @@ export default function BookingManagement({
                 <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
               <AnimatePresence initial={false}>
                 {filteredList.map((bk) => (
                   <motion.tr
@@ -479,7 +479,7 @@ export default function BookingManagement({
                 className="w-screen max-w-md bg-white dark:bg-[#121822] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
               >
                 {/* Form header */}
-                <div className="p-6 border-b border-[#e1e5eb] dark:border-slate-800 flex items-center justify-between">
+                <div className="p-6 border-b border-[#c8cdd6] dark:border-slate-700 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-500" />
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display">
@@ -514,7 +514,7 @@ export default function BookingManagement({
                         placeholder="First Name *"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                       />
                       <input
                         id="form-last-name"
@@ -523,7 +523,7 @@ export default function BookingManagement({
                         placeholder="Last Name *"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                        className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                       />
                     </div>
                     {/* Middle name full width */}
@@ -533,7 +533,7 @@ export default function BookingManagement({
                       placeholder="Middle Name"
                       value={middleName}
                       onChange={(e) => setMiddleName(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                     />
                   </div>
 
@@ -549,7 +549,7 @@ export default function BookingManagement({
                       placeholder="Border Email Address"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                     />
                   </div>
 
@@ -569,7 +569,7 @@ export default function BookingManagement({
                         const val = e.target.value.replace(/\D/g, '');
                         setContactNumber(val.slice(0, 11));
                       }}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
                     />
                     {contactNumber.length > 0 && contactNumber.length < 11 && (
                       <p className="text-[10px] text-amber-500 font-medium">
@@ -596,7 +596,7 @@ export default function BookingManagement({
                         else if (val === 'Couple room') setGuestRoomNumber('303');
                         else setGuestRoomNumber('404');
                       }}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 text-gray-700 dark:text-gray-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl font-bold cursor-pointer"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl font-bold cursor-pointer"
                     >
                       <option value="Bed space">Bed space (Shared dormitory)</option>
                       <option value="Solo room">Solo room (Private cabin)</option>
@@ -617,7 +617,7 @@ export default function BookingManagement({
                       placeholder="e.g. 104-B"
                       value={guestRoomNumber}
                       onChange={(e) => setGuestRoomNumber(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                      className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
                     />
                   </div>
 
@@ -642,7 +642,7 @@ export default function BookingManagement({
                           const minOutStr = minOut.toISOString().split('T')[0];
                           if (checkOut <= newCheckIn) setCheckOut(minOutStr);
                         }}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -656,7 +656,7 @@ export default function BookingManagement({
                         min={(() => { const d = new Date(checkIn); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()}
                         value={checkOut}
                         onChange={(e) => setCheckOut(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
                       />
                     </div>
                   </div>
@@ -678,7 +678,7 @@ export default function BookingManagement({
                               ? mode === 'GCash'
                                 ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
                                 : 'bg-cyan-500 border-cyan-500 text-white shadow-sm'
-                              : 'bg-gray-50 dark:bg-[#0f141c] border-slate-200 dark:border-slate-800 text-gray-500 dark:text-gray-400 hover:border-cyan-400'
+                              : 'bg-gray-50 dark:bg-[#0f141c] border-slate-300 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:border-cyan-400'
                           }`}
                         >
                           {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
@@ -696,7 +696,7 @@ export default function BookingManagement({
                           placeholder="Enter GCash reference number"
                           value={referenceNumber}
                           onChange={(e) => setReferenceNumber(e.target.value)}
-                          className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border border-blue-300 dark:border-blue-800 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
+                          className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-blue-400 dark:border-blue-700 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold font-mono tracking-wider"
                         />
                       </div>
                     )}
@@ -709,7 +709,7 @@ export default function BookingManagement({
                       Booking Price (PHP ₱)
                     </label>
                     {/* Live price display */}
-                    <div className="w-full px-4 py-2.5 bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/50 rounded-xl flex items-center justify-between">
+                    <div className="w-full px-4 py-2.5 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-300 dark:border-cyan-800 rounded-xl flex items-center justify-between">
                       <span className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
                         {computeNights(checkIn, checkOut)} night{computeNights(checkIn, checkOut) !== 1 ? 's' : ''} × ₱{ROOM_PRICES[formRoomType].toLocaleString()}
                       </span>
@@ -732,14 +732,14 @@ export default function BookingManagement({
                       <button
                         type="button"
                         onClick={() => idFileInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
+                        className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
                       >
                         <Upload className="w-6 h-6" />
                         <span className="text-xs font-semibold">Click to upload ID photo</span>
                         <span className="text-[10px] text-gray-300 dark:text-gray-600">JPG, PNG, WEBP — max 5MB</span>
                       </button>
                     ) : (
-                      <div className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                      <div className="relative group rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600">
                         <img
                           src={idImagePreview}
                           alt="ID Preview"
@@ -781,7 +781,7 @@ export default function BookingManagement({
                   </div>
 
                   {/* Amenities */}
-                  <div className="p-4 bg-slate-100/50 dark:bg-slate-900/30 rounded-xl border border-slate-200/40 space-y-2">
+                  <div className="p-4 bg-slate-100/50 dark:bg-slate-900/30 rounded-xl border border-slate-300 dark:border-slate-600 space-y-2">
                     <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                       <ChevronRight className="w-3.5 h-3.5 text-cyan-500" />
                       Amenities
@@ -804,11 +804,11 @@ export default function BookingManagement({
                 </form>
 
                 {/* Form buttons */}
-                <div className="p-6 border-t border-[#e1e5eb] dark:border-slate-800 bg-gray-55/40 dark:bg-[#0e141d] flex items-center gap-3">
+                <div className="p-6 border-t border-[#c8cdd6] dark:border-slate-700 bg-gray-55/40 dark:bg-[#0e141d] flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="w-1/2 py-3 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 transition-colors"
+                    className="w-1/2 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 transition-colors"
                   >
                     Cancel
                   </button>
@@ -844,10 +844,10 @@ export default function BookingManagement({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-              className="relative w-full max-w-md bg-white dark:bg-[#121822] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative w-full max-w-md bg-white dark:bg-[#121822] rounded-2xl shadow-2xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden max-h-[90vh] flex flex-col"
             >
               {/* Header */}
-              <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
+              <div className="p-5 border-b-2 border-slate-300 dark:border-slate-600 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4 text-cyan-500" />
                   <h2 className="text-sm font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">
@@ -874,7 +874,7 @@ export default function BookingManagement({
 
                 {/* Border info */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <User className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Border Name</p>
@@ -882,7 +882,7 @@ export default function BookingManagement({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Mail className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
@@ -890,7 +890,7 @@ export default function BookingManagement({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contact Number</p>
@@ -899,7 +899,7 @@ export default function BookingManagement({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room Type</p>
@@ -907,7 +907,7 @@ export default function BookingManagement({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room No.</p>
@@ -917,7 +917,7 @@ export default function BookingManagement({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In</p>
@@ -925,7 +925,7 @@ export default function BookingManagement({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out</p>
@@ -934,7 +934,7 @@ export default function BookingManagement({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-100 dark:border-cyan-900/40">
+                  <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700">
                     <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div className="flex-1">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total Price</p>
@@ -955,7 +955,7 @@ export default function BookingManagement({
 
                   {/* GCash Reference Number */}
                   {(selectedBooking as any).paymentMode === 'GCash' && (selectedBooking as any).referenceNumber && (
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40">
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-300 dark:border-blue-700">
                       <Hash className="w-4 h-4 text-blue-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
@@ -973,7 +973,7 @@ export default function BookingManagement({
                       Valid ID
                     </p>
                     <div
-                      className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      className="relative group rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 cursor-pointer"
                       onClick={() => setLightboxUrl(selectedBooking.idImageUrl!)}
                     >
                       <img
@@ -1013,11 +1013,11 @@ export default function BookingManagement({
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0e141d] space-y-2">
+              <div className="p-4 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0e141d] space-y-2">
 
                 {/* Extend Stay inline form — only for Checked-in */}
                 {selectedBooking.status === 'Checked-in' && showExtend && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/40 space-y-3 mb-1">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border-2 border-amber-300 dark:border-amber-700 space-y-3 mb-1">
                     <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                       <CalendarPlus className="w-3.5 h-3.5" />
                       Extend Stay
@@ -1033,7 +1033,7 @@ export default function BookingManagement({
                         min={selectedBooking.checkOutDate}
                         value={extendCheckOut}
                         onChange={(e) => setExtendCheckOut(e.target.value)}
-                        className="w-full px-3 py-2 text-sm bg-white dark:bg-[#0f141c] border border-amber-300 dark:border-amber-800 focus:outline-none focus:border-amber-500 rounded-lg text-gray-800 dark:text-gray-200 font-semibold"
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-[#0f141c] border-2 border-amber-400 dark:border-amber-700 focus:outline-none focus:border-amber-500 rounded-lg text-gray-800 dark:text-gray-200 font-semibold"
                       />
                     </div>
 
@@ -1043,7 +1043,7 @@ export default function BookingManagement({
                       const pricePerNight = { 'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200 }[selectedBooking.roomType] ?? 0;
                       const extraCost = extraNights * pricePerNight;
                       return (
-                        <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-[#0f141c] rounded-lg border border-amber-200 dark:border-amber-900/40">
+                        <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-[#0f141c] rounded-lg border-2 border-amber-300 dark:border-amber-700">
                           <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
                             +{extraNights} night{extraNights !== 1 ? 's' : ''} × ₱{pricePerNight.toLocaleString()}
                           </span>
@@ -1070,7 +1070,7 @@ export default function BookingManagement({
                                 ? mode === 'GCash'
                                   ? 'bg-blue-500 border-blue-500 text-white'
                                   : 'bg-emerald-500 border-emerald-500 text-white'
-                                : 'bg-white dark:bg-[#0f141c] border-slate-200 dark:border-slate-800 text-gray-500 dark:text-gray-400'
+                                : 'bg-white dark:bg-[#0f141c] border-slate-300 dark:border-slate-600 text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
@@ -1083,7 +1083,7 @@ export default function BookingManagement({
                           placeholder="GCash Reference Number *"
                           value={extendReferenceNumber}
                           onChange={(e) => setExtendReferenceNumber(e.target.value)}
-                          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0f141c] border border-blue-300 dark:border-blue-800 focus:outline-none focus:border-blue-500 rounded-lg text-gray-800 dark:text-gray-200 font-mono mt-1"
+                          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0f141c] border-2 border-blue-400 dark:border-blue-700 focus:outline-none focus:border-blue-500 rounded-lg text-gray-800 dark:text-gray-200 font-mono mt-1"
                         />
                       )}
                     </div>
