@@ -20,6 +20,7 @@ import {
   ImageIcon,
   Upload,
   ZoomIn,
+  CalendarPlus,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
@@ -29,6 +30,7 @@ interface BookingManagementProps {
   rooms: RoomRecord[];
   onAddBooking: (booking: BookingRecord, idImageFile?: File | null) => void;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
+  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
 }
 
 export default function BookingManagement({
@@ -36,6 +38,7 @@ export default function BookingManagement({
   rooms,
   onAddBooking,
   onUpdateBookingStatus,
+  onExtendBooking,
 }: BookingManagementProps) {
   // Local UI lists/states
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +55,12 @@ export default function BookingManagement({
 
   // Details modal
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
+
+  // Extend stay state
+  const [showExtend, setShowExtend] = useState(false);
+  const [extendCheckOut, setExtendCheckOut] = useState('');
+  const [extendPaymentMode, setExtendPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
+  const [extendReferenceNumber, setExtendReferenceNumber] = useState('');
   
   // Simple form fields
   const [firstName, setFirstName] = useState('');
@@ -339,11 +348,35 @@ export default function BookingManagement({
                     {/* Border Name & ID */}
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-full bg-cyan-100 dark:bg-cyan-950/40 flex items-center justify-center text-cyan-600 dark:text-cyan-400 font-bold text-xs">
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${
+                          (() => {
+                            if (bk.status !== 'Checked-in') return false;
+                            const checkOutDay = bk.checkOutDate; // YYYY-MM-DD
+                            const checkInTime = bk.checkedInAt ? new Date(bk.checkedInAt) : null;
+                            const hours = checkInTime ? checkInTime.getHours() : 12;
+                            const minutes = checkInTime ? checkInTime.getMinutes() : 0;
+                            const dueAt = new Date(`${checkOutDay}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
+                            return new Date() >= dueAt;
+                          })()
+                            ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                            : 'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400'
+                        }`}>
                           {bk.guestName.split(' ').slice(0, 2).map((n) => n[0]).join('')}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 dark:text-white text-sm">{bk.guestName}</p>
+                          <p className={`font-bold text-sm ${
+                            (() => {
+                              if (bk.status !== 'Checked-in') return false;
+                              const checkOutDay = bk.checkOutDate;
+                              const checkInTime = bk.checkedInAt ? new Date(bk.checkedInAt) : null;
+                              const hours = checkInTime ? checkInTime.getHours() : 12;
+                              const minutes = checkInTime ? checkInTime.getMinutes() : 0;
+                              const dueAt = new Date(`${checkOutDay}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
+                              return new Date() >= dueAt;
+                            })()
+                              ? 'text-rose-500 dark:text-rose-400'
+                              : 'text-gray-900 dark:text-white'
+                          }`}>{bk.guestName}</p>
                         </div>
                       </div>
                     </td>
@@ -385,44 +418,13 @@ export default function BookingManagement({
                     {/* Interactive Action Menu */}
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Details button — always visible */}
                         <button
                           onClick={() => setSelectedBooking(bk)}
-                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800/50 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold transition-all flex items-center gap-1"
+                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-600 dark:text-slate-300 dark:hover:text-white text-xs font-bold transition-all duration-150 flex items-center gap-1"
                         >
                           <Eye className="w-3 h-3" />
                           Details
                         </button>
-
-                        {bk.status === 'Pending' && (
-                          <>
-                            <button
-                              id={`btn-checkin-${bk.id}`}
-                              onClick={() => onUpdateBookingStatus(bk.id, 'Checked-in')}
-                              className="px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 dark:text-emerald-400 text-xs font-bold transition-all"
-                            >
-                              Check-In
-                            </button>
-                            <button
-                              id={`btn-cancel-${bk.id}`}
-                              onClick={() => onUpdateBookingStatus(bk.id, 'Cancelled')}
-                              className="px-2.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-500 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 dark:text-rose-400 text-xs font-bold transition-all"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-
-                        {bk.status === 'Checked-in' && (
-                          <button
-                            id={`btn-checkout-${bk.id}`}
-                            onClick={() => onUpdateBookingStatus(bk.id, 'Checked-out')}
-                            className="px-2.5 py-1 rounded bg-cyan-50 hover:bg-cyan-100 text-cyan-600 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/40 dark:text-cyan-400 text-xs font-bold transition-all"
-                          >
-                            Check-Out
-                          </button>
-                        )}
-
                         {(bk.status === 'Checked-out' || bk.status === 'Cancelled') && (
                           <span className="text-xs text-gray-400 dark:text-gray-600 font-semibold italic">
                             Archived
@@ -629,9 +631,18 @@ export default function BookingManagement({
                       <input
                         id="form-check-in"
                         type="date"
+                        min={todayStr()}
                         value={checkIn}
-                        onChange={(e) => setCheckIn(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        onChange={(e) => {
+                          const newCheckIn = e.target.value;
+                          setCheckIn(newCheckIn);
+                          // Auto-push checkout to day after new check-in if it's no longer valid
+                          const minOut = new Date(newCheckIn);
+                          minOut.setDate(minOut.getDate() + 1);
+                          const minOutStr = minOut.toISOString().split('T')[0];
+                          if (checkOut <= newCheckIn) setCheckOut(minOutStr);
+                        }}
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -642,9 +653,10 @@ export default function BookingManagement({
                       <input
                         id="form-check-out"
                         type="date"
+                        min={(() => { const d = new Date(checkIn); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()}
                         value={checkOut}
                         onChange={(e) => setCheckOut(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border border-slate-200 dark:border-slate-800 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
                       />
                     </div>
                   </div>
@@ -1001,9 +1013,168 @@ export default function BookingManagement({
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0e141d]">
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0e141d] space-y-2">
+
+                {/* Extend Stay inline form — only for Checked-in */}
+                {selectedBooking.status === 'Checked-in' && showExtend && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-900/40 space-y-3 mb-1">
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <CalendarPlus className="w-3.5 h-3.5" />
+                      Extend Stay
+                    </p>
+
+                    {/* New check-out date */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        New Check-Out Date
+                      </label>
+                      <input
+                        type="date"
+                        min={selectedBooking.checkOutDate}
+                        value={extendCheckOut}
+                        onChange={(e) => setExtendCheckOut(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-[#0f141c] border border-amber-300 dark:border-amber-800 focus:outline-none focus:border-amber-500 rounded-lg text-gray-800 dark:text-gray-200 font-semibold"
+                      />
+                    </div>
+
+                    {/* Extra payment preview */}
+                    {extendCheckOut && extendCheckOut > selectedBooking.checkOutDate && (() => {
+                      const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / (1000 * 60 * 60 * 24));
+                      const pricePerNight = { 'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200 }[selectedBooking.roomType] ?? 0;
+                      const extraCost = extraNights * pricePerNight;
+                      return (
+                        <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-[#0f141c] rounded-lg border border-amber-200 dark:border-amber-900/40">
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                            +{extraNights} night{extraNights !== 1 ? 's' : ''} × ₱{pricePerNight.toLocaleString()}
+                          </span>
+                          <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-300">
+                            +₱{extraCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Payment mode for extension */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Payment Mode
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['Cash', 'GCash'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => { setExtendPaymentMode(mode); setExtendReferenceNumber(''); }}
+                            className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                              extendPaymentMode === mode
+                                ? mode === 'GCash'
+                                  ? 'bg-blue-500 border-blue-500 text-white'
+                                  : 'bg-emerald-500 border-emerald-500 text-white'
+                                : 'bg-white dark:bg-[#0f141c] border-slate-200 dark:border-slate-800 text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                          </button>
+                        ))}
+                      </div>
+                      {extendPaymentMode === 'GCash' && (
+                        <input
+                          type="text"
+                          placeholder="GCash Reference Number *"
+                          value={extendReferenceNumber}
+                          onChange={(e) => setExtendReferenceNumber(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0f141c] border border-blue-300 dark:border-blue-800 focus:outline-none focus:border-blue-500 rounded-lg text-gray-800 dark:text-gray-200 font-mono mt-1"
+                        />
+                      )}
+                    </div>
+
+                    {/* Confirm / Cancel extend */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          if (!extendCheckOut || extendCheckOut <= selectedBooking.checkOutDate) {
+                            alert('Please select a new check-out date that is after the current one.');
+                            return;
+                          }
+                          if (extendPaymentMode === 'GCash' && !extendReferenceNumber.trim()) {
+                            alert('Please enter the GCash Reference Number.');
+                            return;
+                          }
+                          const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / (1000 * 60 * 60 * 24));
+                          const pricePerNight = { 'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200 }[selectedBooking.roomType] ?? 0;
+                          const extraCost = extraNights * pricePerNight;
+                          onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber);
+                          setShowExtend(false);
+                          setExtendCheckOut('');
+                          setExtendPaymentMode('Cash');
+                          setExtendReferenceNumber('');
+                          setSelectedBooking(null);
+                        }}
+                        className="py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors"
+                      >
+                        Confirm Extend
+                      </button>
+                      <button
+                        onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                        className="py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons based on status */}
+                {selectedBooking.status === 'Pending' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        onUpdateBookingStatus(selectedBooking.id, 'Checked-in');
+                        setSelectedBooking(null);
+                      }}
+                      className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Check-In
+                    </button>
+                    <button
+                      onClick={() => {
+                        onUpdateBookingStatus(selectedBooking.id, 'Cancelled');
+                        setSelectedBooking(null);
+                      }}
+                      className="py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      Cancel Booking
+                    </button>
+                  </div>
+                )}
+                {selectedBooking.status === 'Checked-in' && !showExtend && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        onUpdateBookingStatus(selectedBooking.id, 'Checked-out');
+                        setSelectedBooking(null);
+                      }}
+                      className="py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Check-Out
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExtendCheckOut(selectedBooking.checkOutDate);
+                        setShowExtend(true);
+                      }}
+                      className="py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5" />
+                      Extend Stay
+                    </button>
+                  </div>
+                )}
                 <button
-                  onClick={() => setSelectedBooking(null)}
+                  onClick={() => { setSelectedBooking(null); setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
                   className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
                 >
                   Close

@@ -6,6 +6,7 @@ import LoginPage from './pages/login.tsx';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import BookingManagement from './components/BookingManagement';
+import CalendarView from './components/CalendarView';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
 const DARK_MODE_KEY = 'seafarers_admin_dm';
@@ -17,7 +18,7 @@ export default function App() {
   const [bookingStats, setBookingStats] = useState<DayBookingStat[]>([]);
 
   // ── UI state ─────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar'>('dashboard');
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -152,7 +153,7 @@ export default function App() {
   };
 
   // ── Tab switching ────────────────────────────────────────────
-  const handleTabChange = (tab: 'dashboard' | 'booking') => {
+  const handleTabChange = (tab: 'dashboard' | 'booking' | 'calendar') => {
     setAppLoading(true);
     setActiveTab(tab);
     setTimeout(() => setAppLoading(false), 250);
@@ -246,7 +247,30 @@ export default function App() {
     playAlertSound();
   };
 
-  // ── Room occupancy helper ────────────────────────────────────
+  // ── Extend booking → Supabase ────────────────────────────────
+  const handleExtendBooking = async (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        check_out_date: newCheckOut,
+        price: booking.price + extraPrice,
+        payment_mode: extendPaymentMode,
+        reference_number: extendPaymentMode === 'GCash' ? extendReferenceNumber : (booking.referenceNumber || null),
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error extending booking:', error.message);
+      alert('Failed to extend booking. Please try again.');
+      return;
+    }
+
+    await fetchAllData();
+    playAlertSound();
+  };
   const updateRoomOccupancy = async (roomType: string, direction: 'increment' | 'decrement') => {
     const room = rooms.find((r) => r.type === roomType);
     if (!room) return;
@@ -297,7 +321,7 @@ export default function App() {
     setBookings([]);
     setRooms([]);
     setBookingStats([]);
-    setActiveTab('dashboard');
+    setActiveTab('dashboard' as const);
   };
   const handleToggleDark = () => setIsDark((prev) => !prev);
 
@@ -371,7 +395,11 @@ export default function App() {
                 rooms={rooms}
                 onAddBooking={handleAddBooking}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
+                onExtendBooking={handleExtendBooking}
               />
+            )}
+            {activeTab === 'calendar' && (
+              <CalendarView bookings={bookings} />
             )}
           </motion.div>
         </div>

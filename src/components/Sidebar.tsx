@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SidebarProps {
-  activeTab: 'dashboard' | 'booking';
-  onChangeTab: (tab: 'dashboard' | 'booking') => void;
+  activeTab: 'dashboard' | 'booking' | 'calendar';
+  onChangeTab: (tab: 'dashboard' | 'booking' | 'calendar') => void;
   isDark: boolean;
   onToggleDark: () => void;
   onLogout: () => void;
@@ -22,15 +22,16 @@ export default function Sidebar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const logoPath = '/src/assets/images/logo.png';
 
-  const menuItems = [
-    { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'booking' as const, label: 'Booking', icon: CalendarDays },
-  ];
-
-  const handleNav = (tab: 'dashboard' | 'booking') => {
+  const handleNav = (tab: 'dashboard' | 'booking' | 'calendar') => {
     onChangeTab(tab);
     setMobileOpen(false);
   };
+
+  const menuItems = [
+    { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'booking'   as const, label: 'Booking',   icon: CalendarDays },
+    { id: 'calendar'  as const, label: 'Calendar',  icon: CalendarRange },
+  ];
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full justify-between py-6 px-4">
