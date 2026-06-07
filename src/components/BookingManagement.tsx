@@ -146,8 +146,8 @@ export default function BookingManagement({
     reader.readAsDataURL(file);
   };
 
-  // Submit Quick Booking handler
-  const handleFormSubmit = (e: React.FormEvent) => {
+  // Submit Quick Booking handler — accepts status so we can create as Pending OR Checked-in
+  const handleFormSubmit = (e: React.FormEvent | React.MouseEvent, submitStatus: 'Pending' | 'Checked-in' = 'Pending') => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) {
       alert('Please fill out First Name and Last Name.');
@@ -178,7 +178,7 @@ export default function BookingManagement({
       roomNumber: guestRoomNumber || `${100 + Math.floor(Math.random() * 100)}`,
       checkInDate: checkIn,
       checkOutDate: checkOut,
-      status: 'Pending',
+      status: submitStatus,
       price: computedPrice,
       paymentMode,
       referenceNumber: paymentMode === 'GCash' ? referenceNumber.trim() : '',
@@ -804,19 +804,31 @@ export default function BookingManagement({
                 </form>
 
                 {/* Form buttons */}
-                <div className="p-6 border-t border-[#c8cdd6] dark:border-slate-700 bg-gray-55/40 dark:bg-[#0e141d] flex items-center gap-3">
+                <div className="p-6 border-t border-[#c8cdd6] dark:border-slate-700 bg-gray-55/40 dark:bg-[#0e141d] flex flex-col gap-2">
+                  {/* Top row — two action buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => handleFormSubmit(e, 'Pending')}
+                      className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl text-xs font-bold text-white transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>Pending Booking</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleFormSubmit(e, 'Checked-in')}
+                      className="flex-1 py-3 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 rounded-xl text-xs font-bold text-white transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span>Check-in Now</span>
+                    </button>
+                  </div>
+                  {/* Bottom row — cancel */}
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="w-1/2 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-gray-300 transition-colors"
+                    className="w-full py-2.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors"
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={handleFormSubmit}
-                    className="w-1/2 py-3 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 rounded-xl text-xs font-bold text-white transition-colors"
-                  >
-                    Create Booking
                   </button>
                 </div>
               </motion.div>
