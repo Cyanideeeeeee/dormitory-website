@@ -20,7 +20,7 @@ export default function Sidebar({
   adminName,
 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const logoPath = '/src/assets/images/logo.png';
+  const logoPath = '/src/assets/images/logo-v2.png';
 
   const handleNav = (tab: 'dashboard' | 'booking' | 'calendar') => {
     onChangeTab(tab);
