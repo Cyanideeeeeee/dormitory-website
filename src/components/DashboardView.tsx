@@ -81,9 +81,9 @@ export default function DashboardView({
     return true;
   });
 
-  // NEW BOOKING — only Pending bookings created today (deducts once admin checks them in)
+  // PENDING BOOKING — all bookings currently in Pending status (mirrors Booking tab count)
   const newBookingsCount = filteredBookings.filter(
-    (b) => b.status === 'Pending' && b.createdAt?.slice(0, 10) === todayDate
+    (b) => b.status === 'Pending'
   ).length;
 
   // TODAY'S CHECK-IN — all bookings checked-in today regardless of when they were created
