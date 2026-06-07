@@ -291,174 +291,157 @@ export default function DashboardView({
             </div>
           </div>
 
-          {/* ROOM STATISTICS CHART CONTAINER */}
-          <div className="space-y-4">
-            {/* Header row */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
-                Room Statistics
-              </h2>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-                {(() => { const now = new Date(); return `${now.toLocaleDateString('en-US',{month:'long'})} 1 – ${now.toLocaleDateString('en-US',{month:'long',day:'numeric'})}`; })()}
-              </span>
-            </div>
+          {/* MONTHLY ROOM STATISTICS CHART */}
+          {(() => {
+            const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
+            const colors: Record<string, string> = {
+              'Bed space':   '#06b6d4',
+              'Solo room':   '#8b5cf6',
+              'Couple room': '#f59e0b',
+              'Family room': '#10b981',
+            };
+            const currentYear = new Date().getFullYear();
+            const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-            <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm overflow-x-auto">
-              {/* Legend + summary pills */}
-              {(() => {
-                const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
-                const colors: Record<string, string> = {
-                  'Bed space':   '#06b6d4',
-                  'Solo room':   '#8b5cf6',
-                  'Couple room': '#f59e0b',
-                  'Family room': '#10b981',
-                };
+            // Build monthly data — count check-ins per room type per month
+            const monthlyRoomData = monthLabels.map((month, idx) => {
+              const monthStr = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
+              const entry: Record<string, any> = { month };
+              roomTypes.forEach((rt) => {
+                entry[rt] = bookings.filter((b) => {
+                  const isCheckedIn = b.status === 'Checked-in' || b.status === 'Checked-out';
+                  const bMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
+                  return isCheckedIn && b.roomType === rt && bMonth === monthStr;
+                }).length;
+              });
+              return entry;
+            });
 
-                // Build date range: 7/14 days = rolling back N days; 30 days = 1st of current month → today
-                const now = new Date();
-                const days = 30;
-                const dateRange: string[] = [];
+            // Totals per room type
+            const roomTotals: Record<string, number> = {};
+            roomTypes.forEach((rt) => {
+              roomTotals[rt] = monthlyRoomData.reduce((s, d) => s + (d[rt] as number), 0);
+            });
 
-                if (true) {
-                  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                  const cursor = new Date(firstOfMonth);
-                  while (cursor <= now) {
-                    dateRange.push(cursor.toISOString().split('T')[0]);
-                    cursor.setDate(cursor.getDate() + 1);
-                  }
-                } else {
-                  for (let i = days - 1; i >= 0; i--) {
-                    const d = new Date();
-                    d.setDate(d.getDate() - i);
-                    dateRange.push(d.toISOString().split('T')[0]);
-                  }
-                }
-
-                // Count checked-in AND checked-out bookings per room type per day
-                const chartData = dateRange.map((dateStr) => {
-                  const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                  const entry: Record<string, any> = { date: label };
-                  roomTypes.forEach((rt) => {
-                    entry[`${rt}_in`] = bookings.filter(
-                      (b) => b.roomType === rt && b.checkedInAt?.slice(0, 10) === dateStr
-                    ).length;
-                    entry[`${rt}_out`] = bookings.filter(
-                      (b) => b.roomType === rt && (b as any).checkedOutAt?.slice(0, 10) === dateStr
-                    ).length;
-                  });
-                  return entry;
-                });
-
-                // Summary totals
-                const totalsIn: Record<string, number> = {};
-                const totalsOut: Record<string, number> = {};
-                roomTypes.forEach((rt) => {
-                  totalsIn[rt] = chartData.reduce((s, d) => s + (d[`${rt}_in`] as number), 0);
-                  totalsOut[rt] = chartData.reduce((s, d) => s + (d[`${rt}_out`] as number), 0);
-                });
-
-                const tickInterval = dateRange.length <= 7 ? 0 : dateRange.length <= 14 ? 1 : Math.floor(dateRange.length / 8);
-
-                return (
-                  <>
-                    {/* Summary pills */}
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {roomTypes.map((rt) => (
-                        <div
-                          key={rt}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                          style={{ background: colors[rt] + '18', border: `1px solid ${colors[rt]}40` }}
-                        >
-                          <span className="w-2 h-2 rounded-full" style={{ background: colors[rt] }} />
-                          <span style={{ color: colors[rt] }}>{rt}</span>
-                          <span style={{ color: colors[rt] }}>↑{totalsIn[rt]}</span>
-                          <span style={{ color: colors[rt], opacity: 0.6 }}>↓{totalsOut[rt]}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Legend */}
-                    <div className="flex items-center gap-5 mb-4 px-1">
-                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400">
-                        <span className="w-3 h-2 rounded-sm inline-block" style={{ background: '#06b6d4', opacity: 0.9 }} />
-                        Check-In (solid)
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400">
-                        <span className="w-3 h-2 rounded-sm inline-block" style={{ background: '#06b6d4', opacity: 0.35 }} />
-                        Check-Out (faded)
-                      </span>
-                    </div>
-
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart
-                        data={chartData}
-                        margin={{ top: 8, right: 8, left: -8, bottom: dateRange.length > 14 ? 40 : 20 }}
-                        barCategoryGap="28%"
-                        barGap={1}
+            return (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-cyan-500" />
+                      Monthly Room Statistics
+                    </h2>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                      Check-ins per room type — {currentYear}
+                    </p>
+                  </div>
+                  {/* Total summary chips */}
+                  <div className="flex flex-wrap gap-2">
+                    {roomTypes.map((rt) => (
+                      <div
+                        key={rt}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+                        style={{
+                          background: isDark ? colors[rt] + '22' : colors[rt] + '18',
+                          border: `1.5px solid ${colors[rt]}`,
+                          color: isDark ? '#ffffff' : colors[rt],
+                        }}
                       >
-                        <defs>
-                          {roomTypes.map((rt) => (
-                            <linearGradient key={`in-${rt}`} id={`grad-in-${rt.replace(/ /g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={colors[rt]} stopOpacity={0.95} />
-                              <stop offset="100%" stopColor={colors[rt]} stopOpacity={0.65} />
-                            </linearGradient>
-                          ))}
-                          {roomTypes.map((rt) => (
-                            <linearGradient key={`out-${rt}`} id={`grad-out-${rt.replace(/ /g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={colors[rt]} stopOpacity={0.38} />
-                              <stop offset="100%" stopColor={colors[rt]} stopOpacity={0.18} />
-                            </linearGradient>
-                          ))}
-                        </defs>
-                        <CartesianGrid strokeDasharray="2 4" stroke={isDark ? '#1e2a3a' : '#e2e8f0'} vertical={false} />
-                        <XAxis
-                          dataKey="date"
-                          tickLine={false}
-                          axisLine={false}
-                          interval={tickInterval}
-                          angle={dateRange.length > 14 ? -40 : 0}
-                          textAnchor={dateRange.length > 14 ? 'end' : 'middle'}
-                          tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10, fontWeight: 500 }}
-                        />
-                        <YAxis
-                          allowDecimals={false}
-                          tickLine={false}
-                          axisLine={false}
-                          width={24}
-                          tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            borderRadius: '14px',
-                            background: isDark ? '#0f141c' : '#ffffff',
-                            border: `1px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
-                            fontSize: '11px',
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-                            color: isDark ? '#e2e8f0' : '#1e293b',
-                            padding: '10px 14px',
-                          }}
-                          itemStyle={{ paddingBlock: '2px' }}
-                          cursor={{ fill: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
-                          formatter={(value: number, name: string) => {
-                            const isOut = (name as string).endsWith('_out');
-                            const rtName = (name as string).replace(/_in$|_out$/, '');
-                            return [`${value}`, `${rtName} ${isOut ? '↓ Check-Out' : '↑ Check-In'}`];
-                          }}
-                        />
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors[rt] }} />
+                        {rt}: {roomTotals[rt]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm overflow-x-auto">
+                  {/* Legend */}
+                  <div className="flex flex-wrap items-center gap-4 mb-4 px-1">
+                    {roomTypes.map((rt) => (
+                      <span key={rt} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-200">
+                        <span className="w-3 h-2.5 rounded-sm inline-block" style={{ background: colors[rt] }} />
+                        {rt}
+                      </span>
+                    ))}
+                  </div>
+
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart
+                      data={monthlyRoomData}
+                      margin={{ top: 8, right: 8, left: -8, bottom: 4 }}
+                      barCategoryGap="30%"
+                      barGap={2}
+                    >
+                      <defs>
                         {roomTypes.map((rt) => (
-                          <Bar key={`${rt}_in`} dataKey={`${rt}_in`} name={`${rt}_in`}
-                            fill={`url(#grad-in-${rt.replace(/ /g, '')})`} radius={[4, 4, 0, 0]} maxBarSize={11} />
+                          <linearGradient key={rt} id={`mgrad-${rt.replace(/ /g,'')}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%"   stopColor={colors[rt]} stopOpacity={0.95} />
+                            <stop offset="100%" stopColor={colors[rt]} stopOpacity={0.60} />
+                          </linearGradient>
                         ))}
-                        {roomTypes.map((rt) => (
-                          <Bar key={`${rt}_out`} dataKey={`${rt}_out`} name={`${rt}_out`}
-                            fill={`url(#grad-out-${rt.replace(/ /g, '')})`} radius={[4, 4, 0, 0]} maxBarSize={11} />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="2 4"
+                        stroke={isDark ? '#1e2a3a' : '#e2e8f0'}
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 11, fontWeight: 500 }}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tickLine={false}
+                        axisLine={false}
+                        width={24}
+                        tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '14px',
+                          background: isDark ? '#1a2333' : '#ffffff',
+                          border: `1px solid ${isDark ? '#2d3f55' : '#e2e8f0'}`,
+                          fontSize: '11px',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                          color: isDark ? '#f1f5f9' : '#1e293b',
+                          padding: '10px 14px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 700,
+                          fontSize: '12px',
+                          color: isDark ? '#f1f5f9' : '#0f172a',
+                          marginBottom: '4px',
+                        }}
+                        itemStyle={{
+                          color: isDark ? '#e2e8f0' : '#334155',
+                          fontWeight: 600,
+                          paddingBlock: '2px',
+                        }}
+                        cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }}
+                        formatter={(value: number, name: string) => [`${value} check-in${value !== 1 ? 's' : ''}`, name]}
+                      />
+                      <Legend
+                        wrapperStyle={{ display: 'none' }}
+                      />
+                      {roomTypes.map((rt) => (
+                        <Bar
+                          key={rt}
+                          dataKey={rt}
+                          name={rt}
+                          fill={`url(#mgrad-${rt.replace(/ /g,'')})`}
+                          radius={[5, 5, 0, 0]}
+                          maxBarSize={18}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* MONTHLY BOOKING STATISTICS CHART */}
           <div className="space-y-4">
@@ -475,16 +458,16 @@ export default function DashboardView({
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
-                  <span className="text-gray-400 dark:text-gray-500">2026 Total:</span>
-                  <span className="text-cyan-600 dark:text-cyan-400 font-black">
+                  <span className="text-gray-500 dark:text-gray-300">2026 Total:</span>
+                  <span className="text-cyan-600 dark:text-cyan-300 font-black">
                     {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
                   </span>
                 </div>
                 {totalYearBookings > 0 && (
                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                     <TrendingUp className="w-3 h-3 text-violet-500" />
-                    <span className="text-gray-400 dark:text-gray-500">Peak:</span>
-                    <span className="text-violet-600 dark:text-violet-400 font-black">
+                    <span className="text-gray-500 dark:text-gray-300">Peak:</span>
+                    <span className="text-violet-600 dark:text-violet-300 font-black">
                       {peakBookingMonth.month} · {peakBookingMonth.count}
                     </span>
                   </div>
@@ -531,26 +514,31 @@ export default function DashboardView({
                       tick={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: 10 }}
                     />
                     <Tooltip
-                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', radius: 8 }}
+                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', radius: 8 }}
                       contentStyle={{
                         borderRadius: '14px',
-                        background: isDark ? '#0f141c' : '#ffffff',
-                        border: `1.5px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
+                        background: isDark ? '#1a2333' : '#ffffff',
+                        border: `1.5px solid ${isDark ? '#2d3f55' : '#e2e8f0'}`,
                         fontSize: '11px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                        color: isDark ? '#f1f5f9' : '#1e293b',
                         padding: '10px 14px',
+                      }}
+                      labelStyle={{
+                        fontWeight: 700,
+                        marginBottom: '6px',
+                        fontSize: '12px',
+                        color: isDark ? '#f1f5f9' : '#0f172a',
+                      }}
+                      itemStyle={{
+                        color: isDark ? '#e2e8f0' : '#334155',
+                        fontWeight: 600,
+                        paddingBlock: '2px',
                       }}
                       formatter={(value: number) => [
                         `${value} check-in${value !== 1 ? 's' : ''}`,
                         'Bookings',
                       ]}
-                      labelStyle={{
-                        fontWeight: 700,
-                        marginBottom: '6px',
-                        fontSize: '12px',
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                      }}
                     />
                     <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
                       {monthlyBookingData.map((entry, index) => (
@@ -593,16 +581,16 @@ export default function DashboardView({
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  <span className="text-gray-400 dark:text-gray-500">2026 Total:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                  <span className="text-gray-500 dark:text-gray-300">2026 Total:</span>
+                  <span className="text-emerald-600 dark:text-emerald-300 font-black">
                     ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 {totalYearRevenue > 0 && (
                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                     <TrendingUp className="w-3 h-3 text-amber-500" />
-                    <span className="text-gray-400 dark:text-gray-500">Peak:</span>
-                    <span className="text-amber-600 dark:text-amber-400 font-black">
+                    <span className="text-gray-500 dark:text-gray-300">Peak:</span>
+                    <span className="text-amber-500 dark:text-amber-300 font-black">
                       {peakMonth.month} · ₱{peakMonth.revenue.toLocaleString()}
                     </span>
                   </div>
@@ -652,26 +640,31 @@ export default function DashboardView({
                       }
                     />
                     <Tooltip
-                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', radius: 8 }}
+                      cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', radius: 8 }}
                       contentStyle={{
                         borderRadius: '14px',
-                        background: isDark ? '#0f141c' : '#ffffff',
-                        border: `1.5px solid ${isDark ? '#1e2a3a' : '#e2e8f0'}`,
+                        background: isDark ? '#1a2333' : '#ffffff',
+                        border: `1.5px solid ${isDark ? '#2d3f55' : '#e2e8f0'}`,
                         fontSize: '11px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                        color: isDark ? '#e2e8f0' : '#1e293b',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+                        color: isDark ? '#f1f5f9' : '#1e293b',
                         padding: '10px 14px',
+                      }}
+                      labelStyle={{
+                        fontWeight: 700,
+                        marginBottom: '6px',
+                        fontSize: '12px',
+                        color: isDark ? '#f1f5f9' : '#0f172a',
+                      }}
+                      itemStyle={{
+                        color: isDark ? '#e2e8f0' : '#334155',
+                        fontWeight: 600,
+                        paddingBlock: '2px',
                       }}
                       formatter={(value: number) => [
                         `₱${(value as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
                         'Revenue',
                       ]}
-                      labelStyle={{
-                        fontWeight: 700,
-                        marginBottom: '6px',
-                        fontSize: '12px',
-                        color: isDark ? '#e2e8f0' : '#1e293b',
-                      }}
                     />
                     <Bar
                       dataKey="revenue"
