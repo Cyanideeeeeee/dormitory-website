@@ -24,10 +24,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
+import { PriceSettings } from './AdminView';
 
 interface BookingManagementProps {
   bookings: BookingRecord[];
   rooms: RoomRecord[];
+  settings: PriceSettings;
   onAddBooking: (booking: BookingRecord, idImageFile?: File | null) => void;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
   onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
@@ -36,6 +38,7 @@ interface BookingManagementProps {
 export default function BookingManagement({
   bookings,
   rooms,
+  settings,
   onAddBooking,
   onUpdateBookingStatus,
   onExtendBooking,
@@ -128,16 +131,15 @@ export default function BookingManagement({
   // Reset to page 1 whenever any filter changes
   React.useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedStatus, selectedRoomType, selectedMonth]);
 
-  // Fixed prices per room type
+  // Prices from Admin settings — live from Supabase
   const ROOM_PRICES: Record<string, number> = {
-    'Bed space': 250,
-    'Solo room': 525,
-    'Couple room': 725,
-    'Family room': 950,
+    'Bed space':   settings.price_bed_space,
+    'Solo room':   settings.price_solo_room,
+    'Couple room': settings.price_couple_room,
+    'Family room': settings.price_family_room,
   };
 
-  // Fixed key deposit — always added to every booking total
-  const KEY_DEPOSIT = 200;
+  const KEY_DEPOSIT = settings.key_deposit;
 
   // Calculate pricing based on fixed room type prices
   const computePrice = (roomType: RoomType, numNights: number = 1) => {

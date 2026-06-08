@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import BookingManagement from './components/BookingManagement';
 import CalendarView from './components/CalendarView';
+import AdminView, { PriceSettings } from './components/AdminView';
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
 const DARK_MODE_KEY = 'seafarers_admin_dm';
@@ -16,9 +17,16 @@ export default function App() {
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [rooms, setRooms] = useState<RoomRecord[]>([]);
   const [bookingStats, setBookingStats] = useState<DayBookingStat[]>([]);
+  const [settings, setSettings] = useState<PriceSettings>({
+    price_bed_space:   250,
+    price_solo_room:   525,
+    price_couple_room: 725,
+    price_family_room: 950,
+    key_deposit:       200,
+  });
 
   // ── UI state ─────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar' | 'admin'>('dashboard');
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -56,7 +64,7 @@ export default function App() {
 
   const fetchAllData = async () => {
     setDataLoading(true);
-    await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats()]);
+    await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats(), fetchSettings()]);
     setDataLoading(false);
   };
 
@@ -139,6 +147,40 @@ export default function App() {
     setBookingStats(mapped);
   };
 
+  const fetchSettings = async () => {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('*');
+
+    if (error) {
+      console.error('Error fetching settings:', error.message);
+      return;
+    }
+
+    const map: Record<string, number> = {};
+    (data || []).forEach((row: any) => { map[row.key] = parseFloat(row.value); });
+
+    setSettings({
+      price_bed_space:   map['price_bed_space']   ?? 250,
+      price_solo_room:   map['price_solo_room']   ?? 525,
+      price_couple_room: map['price_couple_room'] ?? 725,
+      price_family_room: map['price_family_room'] ?? 950,
+      key_deposit:       map['key_deposit']       ?? 200,
+    });
+  };
+
+  const handleSaveSettings = async (updated: PriceSettings) => {
+    const upserts = Object.entries(updated).map(([key, value]) => ({ key, value }));
+    const { error } = await supabase
+      .from('settings')
+      .upsert(upserts, { onConflict: 'key' });
+
+    if (error) throw new Error(error.message);
+
+    // Update local state immediately
+    setSettings(updated);
+  };
+
   // ── Audio alert ──────────────────────────────────────────────
   const playAlertSound = () => {
     try {
@@ -157,7 +199,7 @@ export default function App() {
   };
 
   // ── Tab switching ────────────────────────────────────────────
-  const handleTabChange = (tab: 'dashboard' | 'booking' | 'calendar') => {
+  const handleTabChange = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => {
     setAppLoading(true);
     setActiveTab(tab);
     setTimeout(() => setAppLoading(false), 250);
@@ -402,6 +444,7 @@ export default function App() {
               <BookingManagement
                 bookings={bookings}
                 rooms={rooms}
+                settings={settings}
                 onAddBooking={handleAddBooking}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
                 onExtendBooking={handleExtendBooking}
@@ -412,6 +455,12 @@ export default function App() {
                 bookings={bookings}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
                 onExtendBooking={handleExtendBooking}
+              />
+            )}
+            {activeTab === 'admin' && (
+              <AdminView
+                settings={settings}
+                onSaveSettings={handleSaveSettings}
               />
             )}
           </motion.div>
