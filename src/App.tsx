@@ -88,6 +88,10 @@ export default function App() {
       checkedInAt: row.checked_in_at ?? null,
       checkedOutAt: row.checked_out_at ?? null,
       idImageUrl: row.id_image_url ?? null,
+      checkInTime: row.check_in_time ?? '12:00',
+      checkOutTime: row.check_out_time ?? '12:00',
+      discountAmount: row.discount_amount ?? 0,
+      keyDeposit: row.key_deposit ?? 0,
     }));
     setBookings(mapped);
   };
@@ -194,8 +198,13 @@ export default function App() {
       room_number: newBooking.roomNumber,
       check_in_date: newBooking.checkInDate,
       check_out_date: newBooking.checkOutDate,
+      check_in_time: newBooking.checkInTime || '12:00',
+      check_out_time: newBooking.checkOutTime || '12:00',
       status: newBooking.status,
       price: newBooking.price,
+      discount_amount: newBooking.discountAmount ?? 0,
+      key_deposit: (newBooking as any).keyDeposit ?? 0,
+      checked_in_at: newBooking.status === 'Checked-in' ? (newBooking.checkedInAt ?? new Date().toISOString()) : null,
       created_at: new Date().toISOString(),
       id_image_url: idImageUrl,
     });
@@ -399,7 +408,11 @@ export default function App() {
               />
             )}
             {activeTab === 'calendar' && (
-              <CalendarView bookings={bookings} />
+              <CalendarView
+                bookings={bookings}
+                onUpdateBookingStatus={handleUpdateBookingStatus}
+                onExtendBooking={handleExtendBooking}
+              />
             )}
           </motion.div>
         </div>

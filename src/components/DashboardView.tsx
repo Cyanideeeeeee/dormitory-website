@@ -303,7 +303,6 @@ export default function DashboardView({
             const currentYear = new Date().getFullYear();
             const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-            // Build monthly data — count check-ins per room type per month
             const monthlyRoomData = monthLabels.map((month, idx) => {
               const monthStr = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
               const entry: Record<string, any> = { month };
@@ -317,7 +316,6 @@ export default function DashboardView({
               return entry;
             });
 
-            // Totals per room type
             const roomTotals: Record<string, number> = {};
             roomTypes.forEach((rt) => {
               roomTotals[rt] = monthlyRoomData.reduce((s, d) => s + (d[rt] as number), 0);
@@ -355,6 +353,7 @@ export default function DashboardView({
                   </div>
                 </div>
 
+                {/* Chart card */}
                 <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm overflow-x-auto">
                   {/* Legend */}
                   <div className="flex flex-wrap items-center gap-4 mb-4 px-1">
@@ -365,7 +364,6 @@ export default function DashboardView({
                       </span>
                     ))}
                   </div>
-
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart
                       data={monthlyRoomData}
@@ -423,9 +421,7 @@ export default function DashboardView({
                         cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }}
                         formatter={(value: number, name: string) => [`${value} check-in${value !== 1 ? 's' : ''}`, name]}
                       />
-                      <Legend
-                        wrapperStyle={{ display: 'none' }}
-                      />
+                      <Legend wrapperStyle={{ display: 'none' }} />
                       {roomTypes.map((rt) => (
                         <Bar
                           key={rt}
@@ -443,7 +439,7 @@ export default function DashboardView({
             );
           })()}
 
-          {/* MONTHLY BOOKING STATISTICS CHART */}
+                    {/* MONTHLY BOOKING STATISTICS CHART */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>

@@ -49,6 +49,10 @@ export default function BookingManagement({
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  // Pagination
+  const ITEMS_PER_PAGE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Quick booking modal standard toggle
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -79,7 +83,11 @@ export default function BookingManagement({
 
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
+  const [checkInTime, setCheckInTime] = useState('12:00');
+  const [checkOutTime, setCheckOutTime] = useState('12:00');
   const [customPrice, setCustomPrice] = useState('');
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
   const [referenceNumber, setReferenceNumber] = useState('');
 
@@ -112,6 +120,14 @@ export default function BookingManagement({
     return matchesSearch && matchesStatus && matchesRoomType && matchesMonth;
   });
 
+  // Derived pagination values
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / ITEMS_PER_PAGE));
+  const safePage   = Math.min(currentPage, totalPages);
+  const pagedList  = filteredList.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
+  // Reset to page 1 whenever any filter changes
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedStatus, selectedRoomType, selectedMonth]);
+
   // Fixed prices per room type
   const ROOM_PRICES: Record<string, number> = {
     'Bed space': 250,
@@ -119,6 +135,9 @@ export default function BookingManagement({
     'Couple room': 725,
     'Family room': 950,
   };
+
+  // Fixed key deposit — always added to every booking total
+  const KEY_DEPOSIT = 200;
 
   // Calculate pricing based on fixed room type prices
   const computePrice = (roomType: RoomType, numNights: number = 1) => {
@@ -167,7 +186,9 @@ export default function BookingManagement({
 
     // Use override price if provided, otherwise use auto-computed price
     const nights = computeNights(checkIn, checkOut);
-    const computedPrice = parseFloat(customPrice) || computePrice(formRoomType, nights);
+    const basePrice = parseFloat(customPrice) || computePrice(formRoomType, nights);
+    const discount = hasDiscount ? (parseFloat(discountAmount) || 0) : 0;
+    const computedPrice = Math.max(0, basePrice - discount) + KEY_DEPOSIT;
 
     const newBooking: BookingRecord = {
       id: `bk-${Date.now().toString().slice(-4)}`,
@@ -178,11 +199,15 @@ export default function BookingManagement({
       roomNumber: guestRoomNumber || `${100 + Math.floor(Math.random() * 100)}`,
       checkInDate: checkIn,
       checkOutDate: checkOut,
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime,
       status: submitStatus,
       price: computedPrice,
+      discountAmount: hasDiscount ? (parseFloat(discountAmount) || 0) : 0,
       paymentMode,
       referenceNumber: paymentMode === 'GCash' ? referenceNumber.trim() : '',
-      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      createdAt: new Date().toISOString(),
+      checkedInAt: submitStatus === 'Checked-in' ? new Date().toISOString() : null,
     };
 
     onAddBooking(newBooking, idImageFile);
@@ -196,6 +221,10 @@ export default function BookingManagement({
     setFormRoomType('Bed space');
     setGuestRoomNumber('101');
     setCustomPrice('');
+    setHasDiscount(false);
+    setDiscountAmount('');
+    setCheckInTime('12:00');
+    setCheckOutTime('12:00');
     setPaymentMode('Cash');
     setReferenceNumber('');
     setIdImageFile(null);
@@ -335,7 +364,7 @@ export default function BookingManagement({
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-sm">
               <AnimatePresence initial={false}>
-                {filteredList.map((bk) => (
+                {pagedList.map((bk) => (
                   <motion.tr
                     key={bk.id}
                     id={`booking-row-${bk.id}`}
@@ -455,6 +484,94 @@ export default function BookingManagement({
             </tbody>
           </table>
         </div>
+
+        {/* PAGER FOOTER */}
+        {filteredList.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0f141c]">
+
+            {/* Record count info */}
+            <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">
+              Showing{' '}
+              <span className="text-gray-700 dark:text-gray-300 font-bold">
+                {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filteredList.length)}
+              </span>
+              {' '}of{' '}
+              <span className="text-gray-700 dark:text-gray-300 font-bold">{filteredList.length}</span>
+              {' '}records
+            </p>
+
+            {/* Page buttons — only shown when more than 1 page */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                {/* First */}
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={safePage === 1}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="First page"
+                >
+                  «
+                </button>
+                {/* Prev */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="Previous page"
+                >
+                  ‹
+                </button>
+
+                {/* Page number pills — smart windowing with ellipsis */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                  .reduce<(number | '…')[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…');
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((item, idx) =>
+                    item === '…' ? (
+                      <span key={`ellipsis-${idx}`} className="px-1.5 text-xs text-gray-400 dark:text-gray-600 font-bold select-none">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setCurrentPage(item as number)}
+                        className={`w-8 h-8 text-xs font-bold rounded-lg border-2 transition-all ${
+                          safePage === item
+                            ? 'bg-cyan-500 border-cyan-500 text-white shadow-sm shadow-cyan-500/30'
+                            : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                {/* Next */}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="Next page"
+                >
+                  ›
+                </button>
+                {/* Last */}
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={safePage === totalPages}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  title="Last page"
+                >
+                  »
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* QUICK WORKSPACE SLIDE-OVER FORM */}
@@ -511,7 +628,7 @@ export default function BookingManagement({
                         id="form-first-name"
                         type="text"
                         required
-                        placeholder="First Name *"
+                        placeholder="First Name"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
                         className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
@@ -520,7 +637,7 @@ export default function BookingManagement({
                         id="form-last-name"
                         type="text"
                         required
-                        placeholder="Last Name *"
+                        placeholder="Last Name"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
                         className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
@@ -530,7 +647,7 @@ export default function BookingManagement({
                     <input
                       id="form-middle-name"
                       type="text"
-                      placeholder="Middle Name"
+                      placeholder="Middle Name/Initial"
                       value={middleName}
                       onChange={(e) => setMiddleName(e.target.value)}
                       className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
@@ -636,14 +753,44 @@ export default function BookingManagement({
                         onChange={(e) => {
                           const newCheckIn = e.target.value;
                           setCheckIn(newCheckIn);
-                          // Auto-push checkout to day after new check-in if it's no longer valid
                           const minOut = new Date(newCheckIn);
                           minOut.setDate(minOut.getDate() + 1);
                           const minOutStr = minOut.toISOString().split('T')[0];
                           if (checkOut <= newCheckIn) setCheckOut(minOutStr);
                         }}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
                       />
+                      {/* Time picker */}
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="time"
+                          value={checkInTime}
+                          onChange={(e) => setCheckInTime(e.target.value)}
+                          className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-mono"
+                        />
+                        <div className="flex rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 shrink-0">
+                          {(['AM','PM'] as const).map((period) => {
+                            const currentPeriod = parseInt(checkInTime.split(':')[0]) >= 12 ? 'PM' : 'AM';
+                            const isActive = currentPeriod === period;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                onClick={() => {
+                                  const [h, m] = checkInTime.split(':').map(Number);
+                                  let newH = h;
+                                  if (period === 'AM' && h >= 12) newH = h - 12;
+                                  if (period === 'PM' && h < 12) newH = h + 12;
+                                  setCheckInTime(`${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+                                }}
+                                className={`px-2 py-2 text-[10px] font-bold transition-colors ${isActive ? 'bg-cyan-500 text-white' : 'bg-gray-50 dark:bg-[#0f141c] text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}
+                              >
+                                {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
@@ -656,8 +803,39 @@ export default function BookingManagement({
                         min={(() => { const d = new Date(checkIn); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()}
                         value={checkOut}
                         onChange={(e) => setCheckOut(e.target.value)}
-                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none"
+                        className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
                       />
+                      {/* Time picker */}
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="time"
+                          value={checkOutTime}
+                          onChange={(e) => setCheckOutTime(e.target.value)}
+                          className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-mono"
+                        />
+                        <div className="flex rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 shrink-0">
+                          {(['AM','PM'] as const).map((period) => {
+                            const currentPeriod = parseInt(checkOutTime.split(':')[0]) >= 12 ? 'PM' : 'AM';
+                            const isActive = currentPeriod === period;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                onClick={() => {
+                                  const [h, m] = checkOutTime.split(':').map(Number);
+                                  let newH = h;
+                                  if (period === 'AM' && h >= 12) newH = h - 12;
+                                  if (period === 'PM' && h < 12) newH = h + 12;
+                                  setCheckOutTime(`${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+                                }}
+                                className={`px-2 py-2 text-[10px] font-bold transition-colors ${isActive ? 'bg-cyan-500 text-white' : 'bg-gray-50 dark:bg-[#0f141c] text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'}`}
+                              >
+                                {period}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -708,16 +886,77 @@ export default function BookingManagement({
                       <CreditCard className="w-3.5 h-3.5" />
                       Booking Price (PHP ₱)
                     </label>
-                    {/* Live price display */}
-                    <div className="w-full px-4 py-2.5 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-300 dark:border-cyan-800 rounded-xl flex items-center justify-between">
-                      <span className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
-                        {computeNights(checkIn, checkOut)} night{computeNights(checkIn, checkOut) !== 1 ? 's' : ''} × ₱{ROOM_PRICES[formRoomType].toLocaleString()}
-                      </span>
-                      <span className="text-lg font-black font-mono text-cyan-700 dark:text-cyan-300">
-                        ₱{(customPrice ? parseFloat(customPrice) : autoComputedPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
+
+                    {/* Price breakdown */}
+                    <div className="w-full px-4 py-3 bg-cyan-50 dark:bg-cyan-950/20 border-2 border-cyan-300 dark:border-cyan-800 rounded-xl space-y-1.5">
+                      {/* Base price row */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold">
+                          {computeNights(checkIn, checkOut)} Night{computeNights(checkIn, checkOut) !== 1 ? 's' : ''} × ₱{ROOM_PRICES[formRoomType].toLocaleString()}
+                        </span>
+                        <span className="text-sm font-bold font-mono text-cyan-700 dark:text-cyan-300">
+                          ₱{(customPrice ? parseFloat(customPrice) : autoComputedPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      {/* Key deposit row — always shown */}
+                      <div className="flex items-center justify-between border-t border-cyan-200 dark:border-cyan-900/50 pt-1.5">
+                        <span className="text-xs text-cyan-600 dark:text-cyan-400 font-semibold flex items-center gap-1">
+                           Key Deposit
+                          <span className="text-[12px] font-normal text-cyan-500 dark:text-cyan-500">(refundable)</span>
+                        </span>
+                        <span className="text-sm font-bold font-mono text-cyan-700 dark:text-cyan-300">
+                          ₱{KEY_DEPOSIT.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      {/* Discount row — only shown when checked */}
+                      {hasDiscount && parseFloat(discountAmount) > 0 && (
+                        <div className="flex items-center justify-between border-t border-cyan-200 dark:border-cyan-900/50 pt-1.5">
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">Discount</span>
+                          <span className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400">
+                            − ₱{parseFloat(discountAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Total — always shown since key deposit is always added */}
+                      <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-1.5">
+                        <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
+                        <span className="text-lg font-black font-mono text-cyan-700 dark:text-cyan-300">
+                          ₱{(Math.max(0, (customPrice ? parseFloat(customPrice) : autoComputedPrice) - (hasDiscount ? (parseFloat(discountAmount) || 0) : 0)) + KEY_DEPOSIT).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Discount checkbox */}
+                    <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+                      <input
+                        type="checkbox"
+                        checked={hasDiscount}
+                        onChange={(e) => {
+                          setHasDiscount(e.target.checked);
+                          if (!e.target.checked) setDiscountAmount('');
+                        }}
+                        className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 accent-amber-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Apply Discount</span>
+                    </label>
+
+                    {/* Discount amount input */}
+                    {hasDiscount && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">₱</span>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="Enter discount amount"
+                          value={discountAmount}
+                          onChange={(e) => setDiscountAmount(e.target.value)}
+                          className="w-full px-4 py-2.5 text-sm bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-800 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 rounded-xl text-amber-700 dark:text-amber-300 font-semibold font-mono"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* ID Image Upload */}
@@ -928,50 +1167,139 @@ export default function BookingManagement({
                     </div>
                   </div>
 
+                  {/* Dates row */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Date</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p>
                       </div>
                     </div>
-
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out</p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Date</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkOutDate}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700">
-                    <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total Price</p>
-                      <p className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
-                        ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
+                  {/* Times row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                      <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Time</p>
+                        <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                          {selectedBooking.checkInTime ? (() => {
+                            const [h, m] = selectedBooking.checkInTime!.split(':').map(Number);
+                            const period = h >= 12 ? 'PM' : 'AM';
+                            const displayH = h % 12 || 12;
+                            return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                          })() : '—'}
+                        </p>
+                      </div>
                     </div>
-                    {(selectedBooking as any).paymentMode && (
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                        (selectedBooking as any).paymentMode === 'GCash'
-                          ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
-                          : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                      }`}>
-                        {(selectedBooking as any).paymentMode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                    <div className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/50">
+                      <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Time</p>
+                        <p className="text-sm font-bold font-mono text-rose-500 dark:text-rose-400">
+                          {selectedBooking.checkOutTime ? (() => {
+                            const [h, m] = selectedBooking.checkOutTime!.split(':').map(Number);
+                            const period = h >= 12 ? 'PM' : 'AM';
+                            const displayH = h % 12 || 12;
+                            return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                          })() : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700 space-y-2">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Price Breakdown</p>
+                      </div>
+                      {selectedBooking.paymentMode && (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+                          selectedBooking.paymentMode === 'GCash'
+                            ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
+                            : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {selectedBooking.paymentMode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 pt-1 border-t border-cyan-200 dark:border-cyan-900/50">
+                      {/* Base room price row */}
+                      {(() => {
+                        const discount  = selectedBooking.discountAmount ?? 0;
+                        const basePrice = selectedBooking.price - KEY_DEPOSIT + discount;
+                        const nights = Math.max(1, Math.round(
+                          (new Date(selectedBooking.checkOutDate).getTime() - new Date(selectedBooking.checkInDate).getTime())
+                          / (1000 * 60 * 60 * 24)
+                        ));
+                        const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">
+                              Room Price
+                              <span className="ml-1.5 text-[10px] text-gray-400 font-normal">
+                                ({nights} night{nights !== 1 ? 's' : ''} × ₱{pricePerNight.toLocaleString()})
+                              </span>
+                            </span>
+                            <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">
+                              ₱{basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Key deposit — always shown */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold flex items-center gap-1">
+                           Key Deposit
+                          <span className="text-[px] text-gray-400 dark:text-gray-500 font-normal">(refundable)</span>
+                        </span>
+                        <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">
+                          ₱{KEY_DEPOSIT.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+
+                      {/* Discount row — only when discount was applied */}
+                      {(selectedBooking.discountAmount ?? 0) > 0 && (
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                          <span className="text-xs text-amber-700 dark:text-amber-400 font-bold flex items-center gap-1.5">
+                             Discount Applied
+                          </span>
+                          <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-400">
+                            − ₱{(selectedBooking.discountAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-2">
+                      <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
+                      <span className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
+                        ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
-                    )}
+                    </div>
                   </div>
 
                   {/* GCash Reference Number */}
-                  {(selectedBooking as any).paymentMode === 'GCash' && (selectedBooking as any).referenceNumber && (
+                  {selectedBooking.paymentMode === 'GCash' && selectedBooking.referenceNumber && (
                     <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-300 dark:border-blue-700">
                       <Hash className="w-4 h-4 text-blue-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
-                        <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{(selectedBooking as any).referenceNumber}</p>
+                        <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{selectedBooking.referenceNumber}</p>
                       </div>
                     </div>
                   )}

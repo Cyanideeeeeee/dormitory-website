@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Users, AlertTriangle, Eye, X, User, Mail, Hash, Bed, CreditCard } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Users, AlertTriangle, Eye, X, User, Mail, Hash, Bed, CreditCard, CheckCircle2, XCircle, LogOut, CalendarPlus, ZoomIn, ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookingRecord } from '../types';
+import { BookingRecord, BookingStatus } from '../types';
 
 interface CalendarViewProps {
   bookings: BookingRecord[];
+  onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
+  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -34,12 +36,22 @@ function isOverdue(booking: BookingRecord): boolean {
   return new Date() >= dueAt;
 }
 
-export default function CalendarView({ bookings }: CalendarViewProps) {
+export default function CalendarView({ bookings, onUpdateBookingStatus, onExtendBooking }: CalendarViewProps) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedBooking, setSelectedBooking] = useState<BookingRecord | null>(null);
   const [selectedDayBookings, setSelectedDayBookings] = useState<{ date: Date; bookings: BookingRecord[] } | null>(null);
+  const [showExtend, setShowExtend] = useState(false);
+  const [extendCheckOut, setExtendCheckOut] = useState('');
+  const [extendPaymentMode, setExtendPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
+  const [extendReferenceNumber, setExtendReferenceNumber] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  const KEY_DEPOSIT = 200;
+  const ROOM_PRICES: Record<string, number> = {
+    'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200,
+  };
 
   // Only Checked-in bookings appear on calendar
   const activeBookings = useMemo(
@@ -365,155 +377,237 @@ export default function CalendarView({ bookings }: CalendarViewProps) {
               <div className="p-5 space-y-4 overflow-y-auto flex-1">
                 {/* Booking ID + Status */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg">
-                    #{selectedBooking.id}
-                  </span>
+                  <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg">#{selectedBooking.id}</span>
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    selectedBooking.status === 'Checked-in'
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
-                      : selectedBooking.status === 'Checked-out'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      : selectedBooking.status === 'Cancelled'
-                      ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-                      : 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400'
-                  }`}>
-                    {selectedBooking.status}
-                  </span>
+                    selectedBooking.status === 'Checked-in' ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+                    : selectedBooking.status === 'Checked-out' ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    : selectedBooking.status === 'Cancelled' ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
+                    : 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400'
+                  }`}>{selectedBooking.status}</span>
                 </div>
 
                 <div className="space-y-3">
-                  {/* Guest Name */}
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <User className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Border Name</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.guestName}</p>
-                    </div>
+                    <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Border Name</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.guestName}</p></div>
                   </div>
-
-                  {/* Email */}
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Mail className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email || '—'}</p>
-                    </div>
+                    <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email || '—'}</p></div>
                   </div>
-
-                  {/* Contact Number */}
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contact Number</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white font-mono">{selectedBooking.contactNumber || '—'}</p>
-                    </div>
+                    <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contact Number</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white font-mono">{selectedBooking.contactNumber || '—'}</p></div>
                   </div>
-
-                  {/* Room Type + Room No */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room Type</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomType}</p>
-                      </div>
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room Type</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomType}</p></div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room No.</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomNumber}</p>
-                      </div>
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room No.</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomNumber}</p></div>
                     </div>
                   </div>
-
-                  {/* Check-In + Check-Out */}
+                  {/* Dates */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p>
-                      </div>
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Date</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p></div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out</p>
-                        <p className={`text-sm font-bold ${isOverdue(selectedBooking) ? 'text-rose-500 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
-                          {selectedBooking.checkOutDate}
-                        </p>
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Date</p>
+                      <p className={`text-sm font-bold ${isOverdue(selectedBooking) ? 'text-rose-500 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>{selectedBooking.checkOutDate}</p></div>
+                    </div>
+                  </div>
+                  {/* Times */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                      <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Time</p>
+                      <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                        {selectedBooking.checkInTime ? (() => { const [h,m] = selectedBooking.checkInTime!.split(':').map(Number); return `${String(h%12||12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; })() : '—'}
+                      </p></div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/50">
+                      <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Time</p>
+                      <p className="text-sm font-bold font-mono text-rose-500 dark:text-rose-400">
+                        {selectedBooking.checkOutTime ? (() => { const [h,m] = selectedBooking.checkOutTime!.split(':').map(Number); return `${String(h%12||12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; })() : '—'}
+                      </p></div>
+                    </div>
+                  </div>
+                  {/* Price breakdown */}
+                  <div className="p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Price Breakdown</p>
                       </div>
+                      {selectedBooking.paymentMode && (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${selectedBooking.paymentMode === 'GCash' ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400' : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'}`}>
+                          {selectedBooking.paymentMode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 pt-1 border-t border-cyan-200 dark:border-cyan-900/50">
+                      {(() => {
+                        const discount = selectedBooking.discountAmount ?? 0;
+                        const basePrice = selectedBooking.price - KEY_DEPOSIT + discount;
+                        const nights = Math.max(1, Math.round((new Date(selectedBooking.checkOutDate).getTime() - new Date(selectedBooking.checkInDate).getTime()) / 86400000));
+                        const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                        return (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">Room Price <span className="text-[10px] text-gray-400 font-normal">({nights}n × ₱{pricePerNight.toLocaleString()})</span></span>
+                            <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">₱{basePrice.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                          </div>
+                        );
+                      })()}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">Key Deposit <span className="text-[10px] text-gray-400 font-normal">(refundable)</span></span>
+                        <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">₱{KEY_DEPOSIT.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                      </div>
+                      {(selectedBooking.discountAmount ?? 0) > 0 && (
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
+                          <span className="text-xs text-amber-700 dark:text-amber-400 font-bold">Discount Applied</span>
+                          <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-400">− ₱{(selectedBooking.discountAmount??0).toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-2">
+                      <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
+                      <span className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">₱{selectedBooking.price.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
                     </div>
                   </div>
-
-                  {/* Price + Payment Mode */}
-                  <div className="flex items-center gap-3 p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700">
-                    <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Total Price</p>
-                      <p className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
-                        ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    {selectedBooking.paymentMode && (
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
-                        selectedBooking.paymentMode === 'GCash'
-                          ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
-                          : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                      }`}>
-                        {selectedBooking.paymentMode === 'GCash' ? '📱 GCash' : '💵 Cash'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* GCash Reference */}
+                  {/* GCash ref */}
                   {selectedBooking.paymentMode === 'GCash' && selectedBooking.referenceNumber && (
                     <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-300 dark:border-blue-700">
                       <Hash className="w-4 h-4 text-blue-500 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
-                        <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{selectedBooking.referenceNumber}</p>
+                      <div><p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
+                      <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{selectedBooking.referenceNumber}</p></div>
+                    </div>
+                  )}
+                  {/* Valid ID */}
+                  {selectedBooking.idImageUrl && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                        <ImageIcon className="w-3.5 h-3.5 text-cyan-500" />Valid ID
+                      </p>
+                      <div className="relative group rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 cursor-pointer" onClick={() => setLightboxUrl(selectedBooking.idImageUrl!)}>
+                        <img src={selectedBooking.idImageUrl} alt="Guest ID" className="w-full h-36 object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <ZoomIn className="w-6 h-6 text-white" />
+                          <span className="text-white text-xs font-bold">Click to view</span>
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Timestamps */}
-                <div className="space-y-1 text-center pt-1">
-                  <p className="text-[10px] text-gray-400">
-                    Booked on {new Date(selectedBooking.createdAt).toLocaleString('en-PH', {
-                      month: 'short', day: '2-digit', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit', hour12: true,
-                    })}
-                  </p>
-                  {selectedBooking.checkedInAt && (
-                    <p className="text-[10px] text-emerald-500 font-semibold flex items-center justify-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                      Checked-in at {new Date(selectedBooking.checkedInAt).toLocaleString('en-PH', {
-                        month: 'short', day: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                      })}
-                    </p>
-                  )}
-                  {selectedBooking.checkedOutAt && (
-                    <p className="text-[10px] text-slate-400 font-semibold flex items-center justify-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-                      Checked-out at {new Date(selectedBooking.checkedOutAt).toLocaleString('en-PH', {
-                        month: 'short', day: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                      })}
-                    </p>
-                  )}
+                  {/* Timestamps */}
+                  <div className="space-y-1.5">
+                    {selectedBooking.checkedInAt && (
+                      <p className="text-[10px] text-emerald-500 font-semibold flex items-center justify-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                        Checked-in at {new Date(selectedBooking.checkedInAt).toLocaleString('en-PH',{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}
+                      </p>
+                    )}
+                    {selectedBooking.checkedOutAt && (
+                      <p className="text-[10px] text-blue-400 font-semibold flex items-center justify-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block shrink-0" />
+                        Checked-out at {new Date(selectedBooking.checkedOutAt).toLocaleString('en-PH',{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0e141d]">
-                <button
-                  onClick={() => setSelectedBooking(null)}
-                  className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
-                >
+              {/* Footer — action buttons mirrored from BookingManagement */}
+              <div className="p-4 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0e141d] space-y-2">
+                {/* Extend Stay form */}
+                {selectedBooking.status === 'Checked-in' && showExtend && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border-2 border-amber-300 dark:border-amber-700 space-y-3 mb-1">
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <CalendarPlus className="w-3.5 h-3.5" />Extend Stay
+                    </p>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">New Check-Out Date</label>
+                      <input type="date" min={selectedBooking.checkOutDate} value={extendCheckOut} onChange={(e) => setExtendCheckOut(e.target.value)}
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-[#0f141c] border border-amber-300 dark:border-amber-800 focus:outline-none focus:border-amber-500 rounded-lg text-gray-800 dark:text-gray-200 font-semibold" />
+                    </div>
+                    {extendCheckOut && extendCheckOut > selectedBooking.checkOutDate && (() => {
+                      const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / 86400000);
+                      const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                      const extraCost = extraNights * pricePerNight;
+                      return (
+                        <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-[#0f141c] rounded-lg border border-amber-200 dark:border-amber-900/40">
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">+{extraNights} night{extraNights!==1?'s':''} × ₱{pricePerNight.toLocaleString()}</span>
+                          <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-300">+₱{extraCost.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
+                        </div>
+                      );
+                    })()}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Mode</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['Cash','GCash'] as const).map((mode) => (
+                          <button key={mode} type="button" onClick={() => { setExtendPaymentMode(mode); setExtendReferenceNumber(''); }}
+                            className={`py-2 rounded-lg text-xs font-bold border transition-all ${extendPaymentMode===mode ? (mode==='GCash'?'bg-blue-500 border-blue-500 text-white':'bg-emerald-500 border-emerald-500 text-white') : 'bg-white dark:bg-[#0f141c] border-slate-200 dark:border-slate-800 text-gray-500'}`}>
+                            {mode==='GCash'?'📱 GCash':'💵 Cash'}
+                          </button>
+                        ))}
+                      </div>
+                      {extendPaymentMode==='GCash' && (
+                        <input type="text" placeholder="GCash Reference Number *" value={extendReferenceNumber} onChange={(e)=>setExtendReferenceNumber(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0f141c] border-2 border-blue-400 dark:border-blue-700 focus:outline-none focus:border-blue-500 rounded-lg text-gray-800 dark:text-gray-200 font-mono mt-1" />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => {
+                        if (!extendCheckOut || extendCheckOut <= selectedBooking.checkOutDate) { alert('Please select a new check-out date after the current one.'); return; }
+                        if (extendPaymentMode==='GCash' && !extendReferenceNumber.trim()) { alert('Please enter the GCash Reference Number.'); return; }
+                        const extraNights = Math.round((new Date(extendCheckOut).getTime()-new Date(selectedBooking.checkOutDate).getTime())/86400000);
+                        const extraCost = extraNights * (ROOM_PRICES[selectedBooking.roomType]??0);
+                        onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber);
+                        setShowExtend(false); setExtendCheckOut(''); setExtendPaymentMode('Cash'); setExtendReferenceNumber(''); setSelectedBooking(null);
+                      }} className="py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors">Confirm Extend</button>
+                      <button onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                        className="py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors">Cancel</button>
+                    </div>
+                  </div>
+                )}
+                {/* Pending actions */}
+                {selectedBooking.status === 'Pending' && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => { onUpdateBookingStatus(selectedBooking.id,'Checked-in'); setSelectedBooking(null); }}
+                      className="py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />Check-In
+                    </button>
+                    <button onClick={() => { onUpdateBookingStatus(selectedBooking.id,'Cancelled'); setSelectedBooking(null); }}
+                      className="py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <XCircle className="w-3.5 h-3.5" />Cancel Booking
+                    </button>
+                  </div>
+                )}
+                {/* Checked-in actions */}
+                {selectedBooking.status === 'Checked-in' && !showExtend && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => { onUpdateBookingStatus(selectedBooking.id,'Checked-out'); setSelectedBooking(null); }}
+                      className="py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <LogOut className="w-3.5 h-3.5" />Check-Out
+                    </button>
+                    <button onClick={() => { setExtendCheckOut(selectedBooking.checkOutDate); setShowExtend(true); }}
+                      className="py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                      <CalendarPlus className="w-3.5 h-3.5" />Extend Stay
+                    </button>
+                  </div>
+                )}
+                <button onClick={() => { setSelectedBooking(null); setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                  className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
                   Close
                 </button>
               </div>
@@ -603,6 +697,25 @@ export default function CalendarView({ bookings }: CalendarViewProps) {
             </motion.div>
           </div>
         )}
-      </AnimatePresence>    </div>
+      </AnimatePresence>      {/* LIGHTBOX */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+            className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}>
+            <motion.div initial={{scale:0.9,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.9,opacity:0}}
+              transition={{type:'spring',damping:25,stiffness:300}}
+              className="relative max-w-3xl w-full" onClick={(e)=>e.stopPropagation()}>
+              <button onClick={() => setLightboxUrl(null)}
+                className="absolute -top-4 -right-4 z-10 w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+              <img src={lightboxUrl} alt="ID Full View" className="w-full rounded-2xl shadow-2xl object-contain max-h-[80vh]" />
+              <p className="text-center text-white/50 text-xs mt-3 font-medium">Click outside or × to close</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

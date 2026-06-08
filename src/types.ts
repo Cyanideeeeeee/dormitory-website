@@ -35,12 +35,15 @@ export interface BookingRecord {
   checkOutDate: string;
   status: BookingStatus;
   price: number;
+  discountAmount?: number;
   createdAt: string;
   checkedInAt?: string | null;
   checkedOutAt?: string | null;
   paymentMode?: 'Cash' | 'GCash';
   referenceNumber?: string;
   idImageUrl?: string | null;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 export interface DayBookingStat {
