@@ -211,37 +211,37 @@ export default function DashboardView({
   return (
     <div className="space-y-5 pb-12 pt-16 lg:pt-0">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-slate-600 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-200 dark:border-slate-700/80 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-950 dark:text-white font-display">
             Dashboard
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 font-semibold flex items-center gap-1.5">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium flex items-center gap-1.5">
             Good Day, Admin! <span>👋</span>
           </p>
         </div>
       </div>
 
       {/* INTERACTIVE FILTER BAR */}
-      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-cyan-500 shrink-0" />
-          <span className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest font-display">
-            Interactive Filters
+          <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest font-display">
+            Filter by Room Type
           </span>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
           {/* Room type filter — scrollable on mobile */}
-          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#0a0f17] p-1 rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-x-auto max-w-full">
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#0a0f17] p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full">
             {(['All', 'Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setRoomCategoryFilter(cat)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                   roomCategoryFilter === cat
-                    ? 'bg-white dark:bg-[#1e2d42] text-gray-900 dark:text-white shadow-sm font-bold ring-1 ring-slate-200 dark:ring-slate-600'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-slate-800/40'
+                    ? 'bg-white dark:bg-[#1e2d42] text-cyan-600 dark:text-cyan-400 shadow-sm font-bold ring-1 ring-cyan-200 dark:ring-cyan-900'
+                    : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-slate-800/40'
                 }`}
               >
                 {cat}
@@ -273,22 +273,23 @@ export default function DashboardView({
           {/* STATS CARDS — 2 cols mobile, 4 cols desktop */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Pending Booking', value: newBookingsCount, icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, bg: 'bg-indigo-50 dark:bg-[#111721]', border: 'border-indigo-300 dark:border-slate-700' },
-              { label: "Today's Check-In", value: todayCheckinsCount, icon: <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />, bg: 'bg-emerald-50 dark:bg-[#111721]', border: 'border-emerald-300 dark:border-slate-700' },
-              { label: "Today's Check-Out", value: todayCheckoutsCount, icon: <ArrowRightLeft className="w-5 h-5 text-pink-500 -rotate-90" />, bg: 'bg-pink-50 dark:bg-[#111721]', border: 'border-pink-300 dark:border-slate-700' },
-              { label: "Today's Revenue", value: `₱${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`, icon: <Coins className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50 dark:bg-[#111721]', border: 'border-amber-300 dark:border-slate-700', small: true },
+              { label: 'Pending Booking', value: newBookingsCount, icon: <CalendarDays className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50 dark:bg-indigo-950/40', iconBorder: 'border-indigo-200 dark:border-indigo-800', accent: 'bg-indigo-500' },
+              { label: "Today's Check-In", value: todayCheckinsCount, icon: <ArrowRightLeft className="w-5 h-5 text-emerald-500 rotate-90" />, iconBg: 'bg-emerald-50 dark:bg-emerald-950/40', iconBorder: 'border-emerald-200 dark:border-emerald-800', accent: 'bg-emerald-500' },
+              { label: "Today's Check-Out", value: todayCheckoutsCount, icon: <ArrowRightLeft className="w-5 h-5 text-pink-500 -rotate-90" />, iconBg: 'bg-pink-50 dark:bg-pink-950/40', iconBorder: 'border-pink-200 dark:border-pink-800', accent: 'bg-pink-500' },
+              { label: "Today's Revenue", value: `₱${totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`, icon: <Coins className="w-5 h-5 text-amber-500" />, iconBg: 'bg-amber-50 dark:bg-amber-950/40', iconBorder: 'border-amber-200 dark:border-amber-800', accent: 'bg-amber-500', small: true },
             ].map((card) => (
               <motion.div
                 key={card.label}
-                whileHover={{ y: -3, boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}
+                whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(0,0,0,0.10)' }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md hover:shadow-xl flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
+                className="relative bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer overflow-hidden"
               >
-                <div className={`p-2.5 rounded-xl border-2 ${card.bg} ${card.border} self-start shadow-xs`}>
+                <div className={`absolute top-0 left-0 w-1 h-full ${card.accent} rounded-l-2xl opacity-70`} />
+                <div className={`p-2.5 rounded-xl border ${card.iconBg} ${card.iconBorder} self-start`}>
                   {card.icon}
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-widest leading-tight">
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest leading-tight mb-0.5">
                     {card.label}
                   </p>
                   <span className={`font-display font-black text-gray-900 dark:text-white tracking-tighter ${card.small ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-4xl'}`}>
@@ -300,24 +301,25 @@ export default function DashboardView({
           </div>
 
           {/* ROOM AVAILABILITY */}
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display">
+          <div className="space-y-3">
+            <h2 className="text-xs font-bold tracking-widest text-gray-400 dark:text-gray-500 uppercase font-display flex items-center gap-2">
+              <Bed className="w-3.5 h-3.5" />
               Room Availability
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Bed space', value: bedSpaceAvailable, color: 'text-cyan-600 dark:text-cyan-400' },
-                { label: 'Solo room', value: soloRoomAvailable, color: 'text-violet-600 dark:text-violet-400' },
-                { label: 'Couple room', value: coupleRoomAvailable, color: 'text-amber-600 dark:text-amber-400' },
-                { label: 'Family room', value: familyRoomAvailable, color: 'text-emerald-600 dark:text-emerald-400' },
+                { label: 'Bed space', value: bedSpaceAvailable, color: 'text-cyan-600 dark:text-cyan-400', ring: 'ring-cyan-200 dark:ring-cyan-900/60', dot: 'bg-cyan-500' },
+                { label: 'Solo room', value: soloRoomAvailable, color: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-200 dark:ring-violet-900/60', dot: 'bg-violet-500' },
+                { label: 'Couple room', value: coupleRoomAvailable, color: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-200 dark:ring-amber-900/60', dot: 'bg-amber-500' },
+                { label: 'Family room', value: familyRoomAvailable, color: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-900/60', dot: 'bg-emerald-500' },
               ].map((room) => (
                 <motion.div
                   key={room.label}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
-                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-md transition-all duration-200 cursor-pointer"
+                  className={`bg-white dark:bg-[#1a2333] p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 ring-1 ${room.ring} flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-sm transition-all duration-200 cursor-pointer`}
                 >
-                  <span className="text-xs text-gray-600 dark:text-gray-300 font-bold font-display">{room.label}</span>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold font-display">{room.label}</span>
                   <span className={`text-3xl sm:text-4xl font-display font-black tracking-tight ${room.color}`}>{room.value}</span>
                 </motion.div>
               ))}
@@ -357,17 +359,17 @@ export default function DashboardView({
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
-                      <BarChart2 className="w-4 h-4 text-cyan-500" />
+                    <h2 className="text-xs font-bold tracking-widest text-gray-400 dark:text-gray-500 uppercase font-display flex items-center gap-2">
+                      <BarChart2 className="w-3.5 h-3.5 text-cyan-500" />
                       Monthly Room Statistics
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
+                    <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-0.5">
                       Check-ins per room type — {roomStatsYear}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     {/* Year pill strip */}
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border border-slate-200 dark:border-slate-700 rounded-xl p-1">
                       <button
                         onClick={() => setRoomStatsYear((y) => Math.max(availableYears[0], y - 1))}
                         disabled={roomStatsYear <= availableYears[0]}
@@ -390,7 +392,7 @@ export default function DashboardView({
                     <div className="flex flex-wrap gap-2">
                       {roomTypes.map((rt) => (
                         <div key={rt} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
-                          style={{ background: isDark ? colors[rt] + '22' : colors[rt] + '18', border: `1.5px solid ${colors[rt]}`, color: isDark ? '#ffffff' : colors[rt] }}>
+                          style={{ background: isDark ? colors[rt] + '22' : colors[rt] + '18', border: `1px solid ${colors[rt]}55`, color: isDark ? '#ffffff' : colors[rt] }}>
                           <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors[rt] }} />
                           {rt}: {roomTotals[rt]}
                         </div>
@@ -400,11 +402,11 @@ export default function DashboardView({
                 </div>
 
                 {/* Chart card */}
-                <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-lg overflow-x-auto">
+                <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-x-auto">
                   {/* Legend */}
                   <div className="flex flex-wrap items-center gap-4 mb-4 px-1">
                     {roomTypes.map((rt) => (
-                      <span key={rt} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-100">
+                      <span key={rt} className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300">
                         <span className="w-3 h-2.5 rounded-sm inline-block" style={{ background: colors[rt] }} />
                         {rt}
                       </span>
@@ -485,21 +487,21 @@ export default function DashboardView({
             );
           })()}
 
-                    {/* MONTHLY BOOKING STATISTICS CHART */}
+          {/* MONTHLY BOOKING STATISTICS CHART */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-cyan-500" />
+                <h2 className="text-xs font-bold tracking-widest text-gray-400 dark:text-gray-500 uppercase font-display flex items-center gap-2">
+                  <TrendingUp className="w-3.5 h-3.5 text-cyan-500" />
                   Monthly Booking Statistics
                 </h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-semibold">
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-0.5">
                   January – December {bookingStatsYear}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 {/* Year pill strip */}
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border border-slate-200 dark:border-slate-700 rounded-xl p-1">
                   <button
                     onClick={() => setBookingStatsYear((y) => Math.max(availableYears[0], y - 1))}
                     disabled={bookingStatsYear <= availableYears[0]}
@@ -521,7 +523,7 @@ export default function DashboardView({
 
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                 <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
-                <span className="text-gray-600 dark:text-gray-300">{bookingStatsYear} Total:</span>
+                <span className="text-gray-500 dark:text-gray-400">{bookingStatsYear} Total:</span>
                 <span className="text-cyan-600 dark:text-cyan-400 font-black">
                   {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
                 </span>
@@ -529,21 +531,21 @@ export default function DashboardView({
               {totalYearBookings > 0 && (
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <TrendingUp className="w-3 h-3 text-violet-500" />
-                  <span className="text-gray-600 dark:text-gray-300">Peak:</span>
+                  <span className="text-gray-500 dark:text-gray-400">Peak:</span>
                   <span className="text-violet-600 dark:text-violet-400 font-black">
                     {peakBookingMonth.month} · {peakBookingMonth.count}
                   </span>
                 </div>
               )}
               {roomCategoryFilter !== 'All' && (
-                <span className="text-[10px] text-cyan-600 bg-cyan-100 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] text-cyan-600 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold border border-cyan-200 dark:border-cyan-900">
                   {roomCategoryFilter}
                 </span>
               )}
             </div>
           </div>
 
-            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden relative">
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden relative">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-400 rounded-t-2xl" />
               <div className="h-64 sm:h-80 w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
@@ -631,18 +633,18 @@ export default function DashboardView({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4 text-emerald-500" />
+                <h2 className="text-xs font-bold tracking-widest text-gray-400 dark:text-gray-500 uppercase font-display flex items-center gap-2">
+                  <BarChart2 className="w-3.5 h-3.5 text-emerald-500" />
                   Monthly Revenue
                 </h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-semibold">
+                <p className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-0.5">
                   January – December {revenueYear}
                 </p>
               </div>
               {/* Summary pills */}
               <div className="flex items-center gap-3 flex-wrap">
                 {/* Year pill strip */}
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border border-slate-200 dark:border-slate-700 rounded-xl p-1">
                   <button
                     onClick={() => setRevenueYear((y) => Math.max(availableYears[0], y - 1))}
                     disabled={revenueYear <= availableYears[0]}
@@ -664,7 +666,7 @@ export default function DashboardView({
 
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                <span className="text-gray-600 dark:text-gray-300">{revenueYear} Total:</span>
+                <span className="text-gray-500 dark:text-gray-400">{revenueYear} Total:</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-black">
                   ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
@@ -672,7 +674,7 @@ export default function DashboardView({
               {totalYearRevenue > 0 && (
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <TrendingUp className="w-3 h-3 text-amber-500" />
-                  <span className="text-gray-600 dark:text-gray-300">Peak:</span>
+                  <span className="text-gray-500 dark:text-gray-400">Peak:</span>
                   <span className="text-amber-500 dark:text-amber-400 font-black">
                     {peakMonth.month} · ₱{peakMonth.revenue.toLocaleString()}
                   </span>
@@ -681,7 +683,7 @@ export default function DashboardView({
             </div>
           </div>
 
-            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden relative">
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden relative">
               {/* Gradient accent top bar */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 rounded-t-2xl" />
 
