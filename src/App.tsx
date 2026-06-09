@@ -28,7 +28,7 @@ export default function App() {
 
   // ── UI state ─────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar' | 'admin'>('dashboard');
-  const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
+  const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out' | 'loading'>('loading');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
 
@@ -59,6 +59,33 @@ export default function App() {
     };
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // ── Restore Supabase session on page load ────────────────────
+  useEffect(() => {
+    const isRefresh = sessionStorage.getItem('app_active');
+
+    if (!isRefresh) {
+      // Fresh tab/browser open → sign out and force login page
+      supabase.auth.signOut().then(() => {
+        setSessionStatus('logged_out');
+      });
+    } else {
+      // Page refresh → restore existing Supabase session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSessionStatus(session ? 'logged_in' : 'logged_out');
+      });
+    }
+
+    // Mark tab as active — survives F5 refresh, but clears on tab/browser close
+    sessionStorage.setItem('app_active', 'true');
+
+    // Listen for auth state changes (login, logout, token expiry)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessionStatus(session ? 'logged_in' : 'logged_out');
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // ── Fetch all data when user logs in ────────────────────────
@@ -488,6 +515,14 @@ export default function App() {
   const handleToggleDark = () => setIsDark((prev) => !prev);
 
   // ── Login gate ───────────────────────────────────────────────
+  if (sessionStatus === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fafbfc] dark:bg-[#090d14]">
+        <LoadingSpinner label="Restoring session..." size="md" />
+      </div>
+    );
+  }
+
   if (sessionStatus === 'logged_out') {
     return <LoginPage onLogin={handleLogin} />;
   }
