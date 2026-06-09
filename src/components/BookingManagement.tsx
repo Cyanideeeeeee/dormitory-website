@@ -246,6 +246,7 @@ export default function BookingManagement({
       checkOutTime: submitStatus === 'Pending' ? null : checkOutTime,
       status: submitStatus,
       price: computedPrice,
+      keyDeposit: KEY_DEPOSIT,
       discountAmount: hasDiscount ? (parseFloat(discountAmount) || 0) : 0,
       paymentMode,
       referenceNumber: paymentMode === 'GCash' ? referenceNumber.trim() : '',
@@ -300,7 +301,7 @@ export default function BookingManagement({
       'Cancelled': 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-300 dark:border-rose-700',
     };
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${styles[status]}`}>
         {getStatusIcon(status)}
         {status}
       </span>
@@ -312,10 +313,10 @@ export default function BookingManagement({
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white font-display">
             Bookings
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-semibold">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 font-semibold">
             Manage transient bookings, check-in status, and client logs
           </p>
         </div>
@@ -324,7 +325,7 @@ export default function BookingManagement({
         <button
           id="btn-open-booking-form"
           onClick={() => setIsFormOpen(true)}
-          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-xs shadow-cyan-500/25 cursor-pointer"
+          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-md shadow-cyan-500/30 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>New Booking</span>
@@ -332,24 +333,24 @@ export default function BookingManagement({
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md">
         {/* Search */}
         <div className="relative sm:col-span-2">
-          <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
           <input
             id="input-booking-search"
             type="text"
             placeholder="Search guest name, email, or room number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 text-sm bg-gray-100/60 dark:bg-[#0f141c] border border-transparent dark:border-slate-800 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-[#111721] rounded-xl text-gray-800 dark:text-gray-200 transition-all font-semibold"
+            className="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-200 dark:border-slate-700 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:bg-white dark:focus:bg-[#111721] rounded-xl text-gray-800 dark:text-gray-200 transition-all font-semibold placeholder:text-gray-400 dark:placeholder:text-gray-600"
           />
         </div>
 
         {/* Date Filter — single picker: month → day in one control */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+            <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
             <input
               id="select-filter-date"
               type="date"
@@ -365,7 +366,7 @@ export default function BookingManagement({
                   setSelectedDate(picked);
                 }
               }}
-              className="w-full text-xs font-bold bg-[#f1f3f6] dark:bg-[#0f141c] text-gray-700 dark:text-gray-300 border-none outline-none focus:ring-1 focus:ring-cyan-500 py-2 px-3 rounded-xl cursor-pointer"
+              className="w-full text-xs font-bold bg-slate-100 dark:bg-[#0a0f17] text-gray-700 dark:text-gray-200 border-none outline-none focus:ring-2 focus:ring-cyan-500 py-2.5 px-3 rounded-xl cursor-pointer"
             />
             {selectedDate && (
               <button
@@ -386,12 +387,12 @@ export default function BookingManagement({
 
         {/* Status Filter */}
         <div className="flex items-center space-x-2">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+          <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
           <select
             id="select-filter-status"
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as any)}
-            className="w-full text-xs font-bold bg-[#f1f3f6] dark:bg-[#0f141c] text-gray-700 dark:text-gray-300 border-none outline-none focus:ring-1 focus:ring-cyan-500 py-2 px-3 rounded-xl cursor-pointer"
+            className="w-full text-xs font-bold bg-slate-100 dark:bg-[#0a0f17] text-gray-700 dark:text-gray-200 border-none outline-none focus:ring-2 focus:ring-cyan-500 py-2.5 px-3 rounded-xl cursor-pointer"
           >
             <option value="All">All Statuses</option>
             <option value="Pending">Pending</option>
@@ -403,12 +404,12 @@ export default function BookingManagement({
 
         {/* Room Type Filter */}
         <div className="flex items-center space-x-2">
-          <Bed className="w-4 h-4 text-gray-400 shrink-0" />
+          <Bed className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
           <select
             id="select-filter-roomtype"
             value={selectedRoomType}
             onChange={(e) => setSelectedRoomType(e.target.value as any)}
-            className="w-full text-xs font-bold bg-[#f1f3f6] dark:bg-[#0f141c] text-gray-700 dark:text-gray-300 border-none outline-none focus:ring-1 focus:ring-cyan-500 py-2 px-3 rounded-xl cursor-pointer"
+            className="w-full text-xs font-bold bg-slate-100 dark:bg-[#0a0f17] text-gray-700 dark:text-gray-200 border-none outline-none focus:ring-2 focus:ring-cyan-500 py-2.5 px-3 rounded-xl cursor-pointer"
           >
             <option value="All">All Room Types</option>
             <option value="Bed space">Bed space</option>
@@ -420,11 +421,11 @@ export default function BookingManagement({
       </div>
 
       {/* BOOKINGS TABLE */}
-      <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 dark:bg-[#0f141c] text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest border-b-2 border-slate-300 dark:border-slate-600">
+              <tr className="bg-slate-50 dark:bg-[#0a0f17] text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest border-b-2 border-slate-300 dark:border-slate-600">
                 <th className="py-4 px-6">Borders Name</th>
                 <th className="py-4 px-4">Room Alloc</th>
                 <th className="py-4 px-4">Check In/Out</th>
@@ -443,7 +444,7 @@ export default function BookingManagement({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors"
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group"
                   >
                     {/* Border Name & ID */}
                     <td className="py-4 px-6">
@@ -458,8 +459,8 @@ export default function BookingManagement({
                             const dueAt = new Date(`${checkOutDay}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
                             return new Date() >= dueAt;
                           })()
-                            ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400'
-                            : 'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400'
+                            ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 ring-2 ring-rose-200 dark:ring-rose-800'
+                            : 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 ring-2 ring-cyan-200 dark:ring-cyan-800'
                         }`}>
                           {bk.guestName.split(' ').slice(0, 2).map((n) => n[0]).join('')}
                         </div>
@@ -483,10 +484,10 @@ export default function BookingManagement({
 
                     {/* Room allocation */}
                     <td className="py-4 px-4">
-                      <p className="font-semibold text-gray-800 dark:text-gray-200 text-sm">
+                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
                         Room {bk.roomNumber}
                       </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                         {bk.roomType}
                       </p>
                     </td>
@@ -494,10 +495,10 @@ export default function BookingManagement({
                     {/* Dates */}
                     <td className="py-4 px-4">
                       <div className="text-xs">
-                        <p className="font-semibold text-gray-700 dark:text-gray-300">
+                        <p className="font-bold text-gray-700 dark:text-gray-200">
                           In: <span className="font-mono">{bk.checkInDate}</span>
                         </p>
-                        <p className="text-gray-400 dark:text-gray-500 font-medium">
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">
                           Out: <span className="font-mono">{bk.checkOutDate}</span>
                         </p>
                       </div>
@@ -505,7 +506,7 @@ export default function BookingManagement({
 
                     {/* Cost */}
                     <td className="py-4 px-4">
-                      <span className="font-mono font-bold text-gray-900 dark:text-white text-sm">
+                      <span className="font-mono font-black text-gray-900 dark:text-white text-sm tracking-tight">
                         ₱{bk.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </td>
@@ -520,13 +521,13 @@ export default function BookingManagement({
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => setSelectedBooking(bk)}
-                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-600 dark:text-slate-300 dark:hover:text-white text-xs font-bold transition-all duration-150 flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 dark:hover:text-white text-xs font-bold transition-all duration-150 flex items-center gap-1 shadow-sm"
                         >
                           <Eye className="w-3 h-3" />
                           Details
                         </button>
                         {(bk.status === 'Checked-out' || bk.status === 'Cancelled') && (
-                          <span className="text-xs text-gray-400 dark:text-gray-600 font-semibold italic">
+                          <span className="text-xs text-gray-400 dark:text-gray-500 font-semibold italic">
                             Archived
                           </span>
                         )}
@@ -540,7 +541,7 @@ export default function BookingManagement({
                     <td colSpan={6} className="py-14 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600" />
-                        <p className="text-sm font-semibold text-gray-400 dark:text-gray-500">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
                           No bookings found
                          {selectedDate
                           ? ` for ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
@@ -548,7 +549,7 @@ export default function BookingManagement({
                            ? ' matching your filters'
                            : ''}
                         </p>
-                          <p className="text-xs text-gray-300 dark:text-gray-600">
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
                              Try selecting a different date or adjusting your filters.
                         </p>
                       </div>
@@ -565,13 +566,13 @@ export default function BookingManagement({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0f141c]">
 
             {/* Record count info */}
-            <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">
+            <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 shrink-0">
               Showing{' '}
-              <span className="text-gray-700 dark:text-gray-300 font-bold">
+              <span className="text-gray-800 dark:text-gray-200 font-bold">
                 {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filteredList.length)}
               </span>
               {' '}of{' '}
-              <span className="text-gray-700 dark:text-gray-300 font-bold">{filteredList.length}</span>
+              <span className="text-gray-800 dark:text-gray-200 font-bold">{filteredList.length}</span>
               {' '}records
             </p>
 
@@ -616,7 +617,7 @@ export default function BookingManagement({
                         onClick={() => setCurrentPage(item as number)}
                         className={`w-8 h-8 text-xs font-bold rounded-lg border-2 transition-all ${
                           safePage === item
-                            ? 'bg-cyan-500 border-cyan-500 text-white shadow-sm shadow-cyan-500/30'
+                            ? 'bg-cyan-500 border-cyan-500 text-white shadow-md shadow-cyan-500/40 scale-105'
                             : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                         }`}
                       >
@@ -668,13 +669,13 @@ export default function BookingManagement({
                 animate={{ x: '0%' }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="w-screen max-w-md bg-white dark:bg-[#121822] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
+                className="w-screen max-w-md bg-white dark:bg-[#0f1520] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
               >
                 {/* Form header */}
-                <div className="p-6 border-b border-[#c8cdd6] dark:border-slate-700 flex items-center justify-between">
+                <div className="p-6 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-500" />
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white font-display">
+                    <h2 className="text-lg font-black text-gray-900 dark:text-white font-display">
                       Create Border Booking
                     </h2>
                   </div>
@@ -693,7 +694,7 @@ export default function BookingManagement({
                 >
                   {/* Name fields */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5" />
                       Border Name
                     </label>
@@ -731,7 +732,7 @@ export default function BookingManagement({
 
                   {/* Border email — optional */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5" />
                       Border Email Address
                     </label>
@@ -747,7 +748,7 @@ export default function BookingManagement({
 
                   {/* Contact Number */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Hash className="w-3.5 h-3.5" />
                       Contact Number
                     </label>
@@ -772,7 +773,7 @@ export default function BookingManagement({
 
                   {/* Room Type Selector */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Bed className="w-3.5 h-3.5" />
                       Select Room Type
                     </label>
@@ -799,7 +800,7 @@ export default function BookingManagement({
 
                   {/* Room Number */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <Hash className="w-3.5 h-3.5" />
                       Assigned Room / Bed Number
                     </label>
@@ -816,7 +817,7 @@ export default function BookingManagement({
                   {/* Checkin Checkout range */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                      <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         Check-In
                         {!checkInTimeManualRef.current && (
@@ -876,7 +877,7 @@ export default function BookingManagement({
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                      <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         Check-Out
                         {!checkOutTimeManualRef.current && (
@@ -932,7 +933,7 @@ export default function BookingManagement({
 
                   {/* Mode of Payment */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <CreditCard className="w-3.5 h-3.5" />
                       Mode of Payment
                     </label>
@@ -973,7 +974,7 @@ export default function BookingManagement({
 
                   {/* Auto-computed price preview */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <CreditCard className="w-3.5 h-3.5" />
                       Booking Price (PHP ₱)
                     </label>
@@ -1052,7 +1053,7 @@ export default function BookingManagement({
 
                   {/* ID Image Upload */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                       <ImageIcon className="w-3.5 h-3.5" />
                       Valid ID 
                     </label>
@@ -1176,7 +1177,7 @@ export default function BookingManagement({
                   <button
                     type="button"
                     onClick={() => setIsFormOpen(false)}
-                    className="w-full py-2.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors"
+                    className="w-full py-2.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors dark:hover:bg-slate-800 text-gray-600 dark:text-gray-400 transition-colors"
                   >
                     Cancel
                   </button>
@@ -1212,7 +1213,7 @@ export default function BookingManagement({
               <div className="p-5 border-b-2 border-slate-300 dark:border-slate-600 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4 text-cyan-500" />
-                  <h2 className="text-sm font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-gray-50 font-display uppercase tracking-wider">
                     Booking Details
                   </h2>
                 </div>
@@ -1239,24 +1240,24 @@ export default function BookingManagement({
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <User className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Border Name</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.guestName}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Border Name</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.guestName}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Mail className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Email</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.email || '—'}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Email</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.email || '—'}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                     <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Contact Number</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white font-mono">{(selectedBooking as any).contactNumber || '—'}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Contact Number</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-50 font-mono">{(selectedBooking as any).contactNumber || '—'}</p>
                     </div>
                   </div>
 
@@ -1264,16 +1265,16 @@ export default function BookingManagement({
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room Type</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomType}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Room Type</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.roomType}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Room No.</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomNumber}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Room No.</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.roomNumber}</p>
                       </div>
                     </div>
                   </div>
@@ -1283,15 +1284,15 @@ export default function BookingManagement({
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Date</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Check-In Date</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.checkInDate}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Date</p>
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkOutDate}</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Check-Out Date</p>
+                        <p className="text-sm font-bold text-gray-900 dark:text-gray-50">{selectedBooking.checkOutDate}</p>
                       </div>
                     </div>
                   </div>
@@ -1301,7 +1302,7 @@ export default function BookingManagement({
                     <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Time</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Check-In Time</p>
                         <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
                           {selectedBooking.status === 'Pending'
                             ? <span className="text-gray-400 dark:text-gray-600 font-normal italic text-xs">Awaiting check-in</span>
@@ -1327,7 +1328,7 @@ export default function BookingManagement({
                     <div className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-900/50">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Time</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Check-Out Time</p>
                         <p className="text-sm font-bold font-mono text-rose-500 dark:text-rose-400">
                           {selectedBooking.status === 'Pending'
                             ? <span className="text-gray-400 dark:text-gray-600 font-normal italic text-xs">Awaiting check-in</span>
@@ -1339,23 +1340,23 @@ export default function BookingManagement({
                                   const displayH = h % 12 || 12;
                                   return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
                                 })()
-                              : selectedBooking.checkedInAt && !selectedBooking.checkOutTime
-                                ? (() => {
-                                    // Mirror check-in time (was a Pending → Checked-in transition, no check-out time set)
-                                    const d = new Date(selectedBooking.checkedInAt);
-                                    const h = d.getHours(), m = d.getMinutes();
-                                    const period = h >= 12 ? 'PM' : 'AM';
-                                    const displayH = h % 12 || 12;
-                                    return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
-                                  })()
-                              : selectedBooking.checkOutTime
+                              : selectedBooking.checkOutTime && selectedBooking.checkOutTime !== '12:00'
                                 ? (() => {
                                     const [h, m] = selectedBooking.checkOutTime!.split(':').map(Number);
                                     const period = h >= 12 ? 'PM' : 'AM';
                                     const displayH = h % 12 || 12;
                                     return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
                                   })()
-                                : '—'}
+                              : selectedBooking.checkedInAt
+                                ? (() => {
+                                    // Fallback: mirror the check-in timestamp
+                                    const d = new Date(selectedBooking.checkedInAt);
+                                    const h = d.getHours(), m = d.getMinutes();
+                                    const period = h >= 12 ? 'PM' : 'AM';
+                                    const displayH = h % 12 || 12;
+                                    return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                  })()
+                              : '—'}
                         </p>
                       </div>
                     </div>
@@ -1431,7 +1432,7 @@ export default function BookingManagement({
                     {/* Total */}
                     <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-2">
                       <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
-                      <span className="text-lg font-black font-mono text-cyan-600 dark:text-cyan-400">
+                      <span className="text-xl font-black font-mono text-cyan-600 dark:text-cyan-400 tracking-tight">
                         ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </div>
@@ -1442,7 +1443,7 @@ export default function BookingManagement({
                     <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-300 dark:border-blue-700">
                       <Hash className="w-4 h-4 text-blue-500 shrink-0" />
                       <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">GCash Reference No.</p>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">GCash Reference No.</p>
                         <p className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400">{selectedBooking.referenceNumber}</p>
                       </div>
                     </div>
@@ -1452,7 +1453,7 @@ export default function BookingManagement({
                 {/* ID Image */}
                 {selectedBooking.idImageUrl && (
                   <div className="space-y-2">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold flex items-center gap-1.5">
                       <ImageIcon className="w-3.5 h-3.5 text-cyan-500" />
                       Valid ID
                     </p>
@@ -1476,7 +1477,7 @@ export default function BookingManagement({
                 {/* Check-in / Check-out timestamps */}
                 <div className="space-y-1.5">
                   {selectedBooking.checkedInAt && (
-                    <p className="text-[10px] text-emerald-500 font-semibold flex items-center justify-center gap-1.5">
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
                       Checked-in at {new Date(selectedBooking.checkedInAt).toLocaleString('en-PH', {
                         month: 'short', day: '2-digit', year: 'numeric',
@@ -1485,7 +1486,7 @@ export default function BookingManagement({
                     </p>
                   )}
                   {selectedBooking.checkedOutAt && (
-                    <p className="text-[10px] text-blue-400 font-semibold flex items-center justify-center gap-1.5">
+                    <p className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold flex items-center justify-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block shrink-0" />
                       Checked-out at {new Date(selectedBooking.checkedOutAt).toLocaleString('en-PH', {
                         month: 'short', day: '2-digit', year: 'numeric',
@@ -1501,8 +1502,8 @@ export default function BookingManagement({
 
                 {/* Extend Stay inline form — only for Checked-in */}
                 {selectedBooking.status === 'Checked-in' && showExtend && (
-                  <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl border-2 border-amber-300 dark:border-amber-700 space-y-3 mb-1">
-                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border-2 border-amber-300 dark:border-amber-700 space-y-3 mb-1">
+                    <p className="text-xs font-black text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                       <CalendarPlus className="w-3.5 h-3.5" />
                       Extend Stay
                     </p>
@@ -1659,7 +1660,7 @@ export default function BookingManagement({
                 )}
                 <button
                   onClick={() => { setSelectedBooking(null); setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
-                  className="w-full py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700"
                 >
                   Close
                 </button>
@@ -1698,7 +1699,7 @@ export default function BookingManagement({
                 alt="ID Full View"
                 className="w-full rounded-2xl shadow-2xl object-contain max-h-[80vh]"
               />
-              <p className="text-center text-white/50 text-xs mt-3 font-medium">
+              <p className="text-center text-white/60 text-xs mt-3 font-medium tracking-wide">
                 Click outside or × to close
               </p>
             </motion.div>

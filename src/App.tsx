@@ -322,8 +322,23 @@ export default function App() {
     const nowISO = new Date().toISOString();
 
     const updatePayload: any = { status };
-    if (status === 'Checked-in') updatePayload.checked_in_at = nowISO;
-    if (status === 'Checked-out') updatePayload.checked_out_at = nowISO;
+    if (status === 'Checked-in') {
+      updatePayload.checked_in_at = nowISO;
+      // Mirror the exact check-in time as the check-out time (HH:MM)
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      updatePayload.check_out_time = `${hh}:${mm}`;
+    }
+    if (status === 'Checked-out') {
+      updatePayload.checked_out_at = nowISO;
+      // Refund key deposit from today's revenue stat
+      const booking = bookings.find((b) => b.id === id);
+      if (booking) {
+        const deposit = booking.keyDeposit ?? 0;
+        if (deposit > 0) await updateTodayStats(-deposit, false);
+      }
+    }
 
     const { error } = await supabase
       .from('bookings')
@@ -391,7 +406,7 @@ export default function App() {
   };
 
   // ── Booking stats helper ─────────────────────────────────────
-  const updateTodayStats = async (revenue: number) => {
+  const updateTodayStats = async (revenue: number, countBooking = true) => {
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
 
     const { data } = await supabase
@@ -404,14 +419,14 @@ export default function App() {
       await supabase
         .from('booking_stats')
         .update({
-          bookings: data.bookings + 1,
+          bookings: data.bookings + (countBooking ? 1 : 0),
           revenue: data.revenue + revenue,
         })
         .eq('date', today);
     } else {
       await supabase.from('booking_stats').insert({
         date: today,
-        bookings: 1,
+        bookings: countBooking ? 1 : 0,
         revenue,
         occupancy_rate: 0,
       });

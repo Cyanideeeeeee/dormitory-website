@@ -52,15 +52,14 @@ export default function DashboardView({
   const [localLoading, setLocalLoading] = useState(false);
   const [todayDate, setTodayDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Year filters — each chart has its own independent year selector
+  // Year filters — each chart has its own independent year selector (2026–2050)
   const currentYear = new Date().getFullYear();
-  const availableYears = Array.from({ length: 10 }, (_, i) => currentYear - 7 + i); // 7 past + current + 2 future
-  const [roomStatsYear, setRoomStatsYear] = useState(currentYear);
-  const [bookingStatsYear, setBookingStatsYear] = useState(currentYear);
-  const [revenueYear, setRevenueYear] = useState(currentYear);
-  const [roomYearOpen, setRoomYearOpen] = useState(false);
-  const [bookingYearOpen, setBookingYearOpen] = useState(false);
-  const [revenueYearOpen, setRevenueYearOpen] = useState(false);
+  const START_YEAR = 2026;
+  const END_YEAR = 2050;
+  const availableYears = Array.from({ length: END_YEAR - START_YEAR + 1 }, (_, i) => START_YEAR + i);
+  const [roomStatsYear, setRoomStatsYear] = useState(Math.max(START_YEAR, Math.min(END_YEAR, currentYear)));
+  const [bookingStatsYear, setBookingStatsYear] = useState(Math.max(START_YEAR, Math.min(END_YEAR, currentYear)));
+  const [revenueYear, setRevenueYear] = useState(Math.max(START_YEAR, Math.min(END_YEAR, currentYear)));
 
   // Refresh todayDate at midnight so stats reset automatically each day
   useEffect(() => {
@@ -106,10 +105,29 @@ export default function DashboardView({
     (b) => b.status === 'Checked-out' && (b as any).checkedOutAt?.slice(0, 10) === todayDate
   ).length;
 
-  // TODAY'S REVENUE — sum of all bookings created today (any status)
-  const totalRevenue = filteredBookings
-    .filter((b) => b.createdAt?.slice(0, 10) === todayDate)
-    .reduce((sum, b) => sum + b.price, 0);
+  // TODAY'S REVENUE —
+  //   + price (minus deposit) for every booking checked-IN today  (money received today)
+  //   - deposit for every booking checked-OUT today that was NOT also created today
+  //     (deposit refunded today for a booking that was already counted on a prior day)
+  const totalRevenue = (() => {
+    // Bookings checked in today: count their price minus their own deposit (deposit held, not yet income)
+    const checkedInToday = filteredBookings.filter(
+      (b) => (b.status === 'Checked-in' || b.status === 'Checked-out') &&
+              b.checkedInAt?.slice(0, 10) === todayDate
+    );
+    const income = checkedInToday.reduce((sum, b) => sum + b.price - (b.keyDeposit ?? 0), 0);
+
+    // Bookings checked OUT today that were checked in on a PRIOR day:
+    // their price was already counted on that prior day, so we only need to subtract the deposit refund
+    const checkedOutTodayPrior = filteredBookings.filter(
+      (b) => b.status === 'Checked-out' &&
+              b.checkedOutAt?.slice(0, 10) === todayDate &&
+              b.checkedInAt?.slice(0, 10) !== todayDate
+    );
+    const refunds = checkedOutTodayPrior.reduce((sum, b) => sum + (b.keyDeposit ?? 0), 0);
+
+    return income - refunds;
+  })();
 
   // Room Availability — deduct for Pending (reserved) AND Checked-in (occupied)
   const getAvailableRoomsCount = (type: RoomType) => {
@@ -140,8 +158,9 @@ export default function DashboardView({
     };
   });
 
-  // Chart 2: Monthly Booking Statistics — check-ins per month, filtered by selected year
-  const monthlyBookingData = ([ 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' ] as const).map((month, idx) => {
+  // Chart 2: Monthly Booking Statistics — check-ins per month, filtered by year + optional month
+  const MONTH_LABELS = [ 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' ] as const;
+  const monthlyBookingData = MONTH_LABELS.map((month, idx) => {
     const monthStr = `${bookingStatsYear}-${String(idx + 1).padStart(2, '0')}`;
     const count = bookings.filter((b) => {
       const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
@@ -170,7 +189,11 @@ export default function DashboardView({
         const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
         return isConfirmed && checkedInMonth === monthStr;
       })
-      .reduce((sum, b) => sum + b.price, 0);
+      .reduce((sum, b) => {
+        // Key deposit is refundable — never counts as real revenue
+        const deposit = b.keyDeposit ?? 0;
+        return sum + b.price - deposit;
+      }, 0);
     const checkIns = bookings.filter((b) => {
       const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
       const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
@@ -188,37 +211,37 @@ export default function DashboardView({
   return (
     <div className="space-y-5 pb-12 pt-16 lg:pt-0">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-slate-600 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white font-display">
             Dashboard
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-semibold flex items-center gap-1.5">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 font-semibold flex items-center gap-1.5">
             Good Day, Admin! <span>👋</span>
           </p>
         </div>
       </div>
 
       {/* INTERACTIVE FILTER BAR */}
-      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-cyan-500 shrink-0" />
-          <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest font-display">
+          <span className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest font-display">
             Interactive Filters
           </span>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
           {/* Room type filter — scrollable on mobile */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0f141c] p-1 rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-x-auto max-w-full">
+          <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#0a0f17] p-1 rounded-xl border-2 border-slate-300 dark:border-slate-600 overflow-x-auto max-w-full">
             {(['All', 'Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setRoomCategoryFilter(cat)}
                 className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                   roomCategoryFilter === cat
-                    ? 'bg-white dark:bg-[#1a2333] text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    ? 'bg-white dark:bg-[#1e2d42] text-gray-900 dark:text-white shadow-sm font-bold ring-1 ring-slate-200 dark:ring-slate-600'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/60 dark:hover:bg-slate-800/40'
                 }`}
               >
                 {cat}
@@ -259,16 +282,16 @@ export default function DashboardView({
                 key={card.label}
                 whileHover={{ y: -3, boxShadow: '0 8px 28px rgba(0,0,0,0.12)' }}
                 whileTap={{ scale: 0.98 }}
-                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
+                className="bg-white dark:bg-[#1a2333] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md hover:shadow-xl flex flex-col justify-between h-32 sm:h-36 transition-all duration-200 cursor-pointer"
               >
                 <div className={`p-2.5 rounded-xl border-2 ${card.bg} ${card.border} self-start shadow-xs`}>
                   {card.icon}
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 dark:text-[#a0aec0] uppercase font-bold tracking-widest leading-tight">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-widest leading-tight">
                     {card.label}
                   </p>
-                  <span className={`font-display font-black text-gray-900 dark:text-white tracking-tight ${card.small ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'}`}>
+                  <span className={`font-display font-black text-gray-900 dark:text-white tracking-tighter ${card.small ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-4xl'}`}>
                     {card.value}
                   </span>
                 </div>
@@ -278,7 +301,7 @@ export default function DashboardView({
 
           {/* ROOM AVAILABILITY */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display">
+            <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display">
               Room Availability
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -292,10 +315,10 @@ export default function DashboardView({
                   key={room.label}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
-                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-sm transition-all duration-200 cursor-pointer"
+                  className="bg-white dark:bg-[#1a2333] p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-center space-y-1.5 h-24 sm:h-28 shadow-md transition-all duration-200 cursor-pointer"
                 >
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold font-display">{room.label}</span>
-                  <span className={`text-2xl sm:text-3xl font-display font-black ${room.color}`}>{room.value}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300 font-bold font-display">{room.label}</span>
+                  <span className={`text-3xl sm:text-4xl font-display font-black tracking-tight ${room.color}`}>{room.value}</span>
                 </motion.div>
               ))}
             </div>
@@ -324,7 +347,6 @@ export default function DashboardView({
               });
               return entry;
             });
-
             const roomTotals: Record<string, number> = {};
             roomTypes.forEach((rt) => {
               roomTotals[rt] = monthlyRoomData.reduce((s, d) => s + (d[rt] as number), 0);
@@ -335,41 +357,34 @@ export default function DashboardView({
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                    <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
                       <BarChart2 className="w-4 h-4 text-cyan-500" />
                       Monthly Room Statistics
                     </h2>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-medium">
                       Check-ins per room type — {roomStatsYear}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {/* Year navigator */}
-                    <div className="relative flex items-center gap-1">
-                      <button onClick={() => setRoomStatsYear((y) => Math.max(availableYears[0], y - 1))}
+                    {/* Year pill strip */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                      <button
+                        onClick={() => setRoomStatsYear((y) => Math.max(availableYears[0], y - 1))}
                         disabled={roomStatsYear <= availableYears[0]}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                       </button>
-                      <button onClick={() => setRoomYearOpen((o) => !o)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                      <span className="px-3 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-cyan-500 to-violet-500 text-white shadow-sm shadow-cyan-500/30 select-none min-w-[3.5rem] text-center">
                         {roomStatsYear}
-                      </button>
-                      <button onClick={() => setRoomStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                      </span>
+                      <button
+                        onClick={() => setRoomStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
                         disabled={roomStatsYear >= availableYears[availableYears.length - 1]}
-                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                      >
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                       </button>
-                      {roomYearOpen && (
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
-                          {availableYears.map((y) => (
-                            <button key={y} onClick={() => { setRoomStatsYear(y); setRoomYearOpen(false); }}
-                              className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${roomStatsYear === y ? 'bg-cyan-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                              {y}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
                     {/* Total summary chips */}
                     <div className="flex flex-wrap gap-2">
@@ -385,11 +400,11 @@ export default function DashboardView({
                 </div>
 
                 {/* Chart card */}
-                <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-sm overflow-x-auto">
+                <div className="bg-white dark:bg-[#0f141c] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-500 shadow-lg overflow-x-auto">
                   {/* Legend */}
                   <div className="flex flex-wrap items-center gap-4 mb-4 px-1">
                     {roomTypes.map((rt) => (
-                      <span key={rt} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-200">
+                      <span key={rt} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-100">
                         <span className="w-3 h-2.5 rounded-sm inline-block" style={{ background: colors[rt] }} />
                         {rt}
                       </span>
@@ -474,68 +489,62 @@ export default function DashboardView({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-cyan-500" />
                   Monthly Booking Statistics
                 </h2>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-semibold">
                   January – December {bookingStatsYear}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                {/* Year navigator */}
-                <div className="relative flex items-center gap-1">
-                  <button onClick={() => setBookingStatsYear((y) => Math.max(availableYears[0], y - 1))}
+                {/* Year pill strip */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                  <button
+                    onClick={() => setBookingStatsYear((y) => Math.max(availableYears[0], y - 1))}
                     disabled={bookingStatsYear <= availableYears[0]}
-                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                   </button>
-                  <button onClick={() => setBookingYearOpen((o) => !o)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                  <span className="px-3 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-cyan-500 to-violet-500 text-white shadow-sm shadow-cyan-500/30 select-none min-w-[3.5rem] text-center">
                     {bookingStatsYear}
-                  </button>
-                  <button onClick={() => setBookingStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                  </span>
+                  <button
+                    onClick={() => setBookingStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
                     disabled={bookingStatsYear >= availableYears[availableYears.length - 1]}
-                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </button>
-                  {bookingYearOpen && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
-                      {availableYears.map((y) => (
-                        <button key={y} onClick={() => { setBookingStatsYear(y); setBookingYearOpen(false); }}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${bookingStatsYear === y ? 'bg-cyan-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                          {y}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
-                  <span className="text-gray-500 dark:text-gray-300">{bookingStatsYear} Total:</span>
-                  <span className="text-cyan-600 dark:text-cyan-300 font-black">
-                    {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                {totalYearBookings > 0 && (
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-                    <TrendingUp className="w-3 h-3 text-violet-500" />
-                    <span className="text-gray-500 dark:text-gray-300">Peak:</span>
-                    <span className="text-violet-600 dark:text-violet-300 font-black">
-                      {peakBookingMonth.month} · {peakBookingMonth.count}
-                    </span>
-                  </div>
-                )}
-                {roomCategoryFilter !== 'All' && (
-                  <span className="text-[10px] text-cyan-600 bg-cyan-100 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold">
-                    {roomCategoryFilter}
-                  </span>
-                )}
-              </div>
-            </div>
 
-            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden relative">
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-400 rounded-t-2xl" />
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
+                <span className="text-gray-600 dark:text-gray-300">{bookingStatsYear} Total:</span>
+                <span className="text-cyan-600 dark:text-cyan-400 font-black">
+                  {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
+                </span>
+              </div>
+              {totalYearBookings > 0 && (
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                  <TrendingUp className="w-3 h-3 text-violet-500" />
+                  <span className="text-gray-600 dark:text-gray-300">Peak:</span>
+                  <span className="text-violet-600 dark:text-violet-400 font-black">
+                    {peakBookingMonth.month} · {peakBookingMonth.count}
+                  </span>
+                </div>
+              )}
+              {roomCategoryFilter !== 'All' && (
+                <span className="text-[10px] text-cyan-600 bg-cyan-100 dark:text-cyan-400 dark:bg-cyan-950/40 px-2 py-0.5 rounded-full font-bold">
+                  {roomCategoryFilter}
+                </span>
+              )}
+            </div>
+          </div>
+
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden relative">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-400 rounded-t-2xl" />
               <div className="h-64 sm:h-80 w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -609,7 +618,7 @@ export default function DashboardView({
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center space-y-1">
                     <TrendingUp className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
-                    <p className="text-xs text-gray-400 dark:text-gray-500 font-semibold">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
                       No check-ins recorded for {bookingStatsYear} yet
                     </p>
                   </div>
@@ -622,65 +631,59 @@ export default function DashboardView({
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-sm font-semibold tracking-widest text-gray-600 dark:text-gray-300 uppercase font-display flex items-center gap-2">
+                <h2 className="text-sm font-bold tracking-widest text-gray-700 dark:text-gray-100 uppercase font-display flex items-center gap-2">
                   <BarChart2 className="w-4 h-4 text-emerald-500" />
                   Monthly Revenue
                 </h2>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 font-semibold">
                   January – December {revenueYear}
                 </p>
               </div>
               {/* Summary pills */}
               <div className="flex items-center gap-3 flex-wrap">
-                {/* Year navigator */}
-                <div className="relative flex items-center gap-1">
-                  <button onClick={() => setRevenueYear((y) => Math.max(availableYears[0], y - 1))}
+                {/* Year pill strip */}
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#0a0f17] border-2 border-slate-300 dark:border-slate-600 rounded-xl p-1">
+                  <button
+                    onClick={() => setRevenueYear((y) => Math.max(availableYears[0], y - 1))}
                     disabled={revenueYear <= availableYears[0]}
-                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                   </button>
-                  <button onClick={() => setRevenueYearOpen((o) => !o)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                  <span className="px-3 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-sm shadow-emerald-500/30 select-none min-w-[3.5rem] text-center">
                     {revenueYear}
-                  </button>
-                  <button onClick={() => setRevenueYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                  </span>
+                  <button
+                    onClick={() => setRevenueYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
                     disabled={revenueYear >= availableYears[availableYears.length - 1]}
-                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-400 dark:text-gray-500 hover:bg-white dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-20 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                   </button>
-                  {revenueYearOpen && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
-                      {availableYears.map((y) => (
-                        <button key={y} onClick={() => { setRevenueYear(y); setRevenueYearOpen(false); }}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${revenueYear === y ? 'bg-emerald-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
-                          {y}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
+
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                <span className="text-gray-600 dark:text-gray-300">{revenueYear} Total:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                  ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              {totalYearRevenue > 0 && (
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  <span className="text-gray-500 dark:text-gray-300">{revenueYear} Total:</span>
-                  <span className="text-emerald-600 dark:text-emerald-300 font-black">
-                    ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  <TrendingUp className="w-3 h-3 text-amber-500" />
+                  <span className="text-gray-600 dark:text-gray-300">Peak:</span>
+                  <span className="text-amber-500 dark:text-amber-400 font-black">
+                    {peakMonth.month} · ₱{peakMonth.revenue.toLocaleString()}
                   </span>
                 </div>
-                {totalYearRevenue > 0 && (
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
-                    <TrendingUp className="w-3 h-3 text-amber-500" />
-                    <span className="text-gray-500 dark:text-gray-300">Peak:</span>
-                    <span className="text-amber-500 dark:text-amber-300 font-black">
-                      {peakMonth.month} · ₱{peakMonth.revenue.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
+          </div>
 
-            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-sm overflow-hidden relative">
+            <div className="bg-white dark:bg-[#141b25] p-4 sm:p-5 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden relative">
               {/* Gradient accent top bar */}
-              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 rounded-t-2xl" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 rounded-t-2xl" />
 
               <div className="h-64 sm:h-80 w-full pt-2">
                 <ResponsiveContainer width="100%" height="100%">
@@ -767,7 +770,7 @@ export default function DashboardView({
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="text-center space-y-1">
                     <BarChart2 className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
-                    <p className="text-xs text-gray-400 dark:text-gray-500 font-semibold">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
                       No revenue recorded for 2026 yet
                     </p>
                   </div>

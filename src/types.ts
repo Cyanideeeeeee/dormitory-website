@@ -47,6 +47,7 @@ export interface BookingRecord {
   status: BookingStatus;
   price: number;
   discountAmount?: number;
+  keyDeposit?: number;
   createdAt: string;
   checkedInAt?: string | null;
   checkedOutAt?: string | null;
