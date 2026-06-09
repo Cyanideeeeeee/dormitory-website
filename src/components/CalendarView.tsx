@@ -179,10 +179,10 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
       </div>
 
       {/* ── CALENDAR CARD ───────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#151c27] rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-md overflow-hidden">
+      <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md overflow-hidden">
 
         {/* Month navigation */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30">
+        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 tracking-tight">
               {MONTHS[viewMonth]} <span className="text-gray-400 dark:text-gray-500 font-medium">{viewYear}</span>
@@ -218,7 +218,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                 {DAY_LABELS.map((d, i) => (
                   <th
                     key={d}
-                    className={`py-3 text-center text-[11px] font-bold tracking-widest uppercase border-b border-slate-100 dark:border-slate-800/80 ${
+                    className={`py-3 text-center text-[11px] font-bold tracking-widest uppercase border-b-2 border-slate-200 dark:border-slate-700 ${
                       i === 0 || i === 6
                         ? 'text-slate-300 dark:text-slate-600'
                         : 'text-slate-400 dark:text-slate-500'
@@ -232,7 +232,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
             </thead>
             <tbody>
               {weeks.map((week, wi) => (
-                <tr key={wi} className="border-b border-slate-100 dark:border-slate-800/50 last:border-b-0">
+                <tr key={wi} className="border-b-2 border-slate-200 dark:border-slate-700 last:border-b-0">
                   {week.map((date, di) => {
                     const isCurrentMonth = !!date;
                     const isToday        = date ? isSameDay(date, today) : false;
@@ -243,7 +243,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                     return (
                       <td
                         key={di}
-                        className={`align-top border-r border-slate-100 dark:border-slate-800/50 last:border-r-0 p-0 transition-colors ${
+                        className={`align-top border-r-2 border-slate-200 dark:border-slate-700 last:border-r-0 p-0 transition-colors ${
                           isToday ? 'bg-cyan-50/40 dark:bg-cyan-950/10' : ''
                         }`}
                         style={{ verticalAlign: 'top', minHeight: 110 }}
