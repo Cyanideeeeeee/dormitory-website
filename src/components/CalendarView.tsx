@@ -466,7 +466,15 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                       <div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold">Check-In Time</p>
                         <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                          {selectedBooking.checkInTime ? (() => { const [h,m] = selectedBooking.checkInTime!.split(':').map(Number); return `${String(h%12||12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; })() : '—'}
+                          {(() => {
+                            // Prefer the actual recorded check-in timestamp over the booked check-in time
+                            const raw = selectedBooking.checkedInAt
+                              ? (() => { const d = new Date(selectedBooking.checkedInAt!); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; })()
+                              : selectedBooking.checkInTime ?? null;
+                            if (!raw) return '—';
+                            const [h, m] = raw.split(':').map(Number);
+                            return `${String(h % 12 || 12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+                          })()}
                         </p>
                       </div>
                     </div>
