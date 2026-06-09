@@ -675,7 +675,7 @@ export default function BookingManagement({
       {/* QUICK WORKSPACE SLIDE-OVER FORM */}
       <AnimatePresence>
         {isFormOpen && (
-          <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="fixed inset-0 z-50">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -685,14 +685,13 @@ export default function BookingManagement({
               className="absolute inset-0 bg-black/50 backdrop-blur-xs"
             />
 
-            <div className="absolute inset-y-0 right-0 w-full flex sm:pl-10 sm:max-w-full">
-              <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: '0%' }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="w-full sm:max-w-md bg-white dark:bg-[#0f1520] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
-              >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: '0%' }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className="fixed top-0 right-0 h-screen w-full sm:max-w-md bg-white dark:bg-[#0f1520] shadow-2xl flex flex-col overflow-hidden z-10"
+            >
                 {/* Form header */}
                 <div className="p-4 sm:p-6 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
@@ -1204,8 +1203,7 @@ export default function BookingManagement({
                     Cancel
                   </button>
                 </div>
-              </motion.div>
-            </div>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
