@@ -21,6 +21,7 @@ import {
   Upload,
   ZoomIn,
   CalendarPlus,
+  Camera,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
@@ -105,6 +106,7 @@ export default function BookingManagement({
   const [idImageFile, setIdImageFile] = useState<File | null>(null);
   const [idImagePreview, setIdImagePreview] = useState<string | null>(null);
   const idFileInputRef = useRef<HTMLInputElement>(null);
+  const idCameraInputRef = useRef<HTMLInputElement>(null);
 
   // Lightbox state — for viewing any ID image full screen
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -1057,15 +1059,26 @@ export default function BookingManagement({
 
                     {/* Upload area */}
                     {!idImagePreview ? (
-                      <button
-                        type="button"
-                        onClick={() => idFileInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-6 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
-                      >
-                        <Upload className="w-6 h-6" />
-                        <span className="text-xs font-semibold">Click to upload ID photo</span>
-                        <span className="text-[10px] text-gray-300 dark:text-gray-600">JPG, PNG, WEBP — max 5MB</span>
-                      </button>
+                      <div className="flex gap-2">
+                        {/* Upload from album */}
+                        <button
+                          type="button"
+                          onClick={() => idFileInputRef.current?.click()}
+                          className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-5 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
+                        >
+                          <Upload className="w-5 h-5" />
+                          <span className="text-[11px] font-semibold text-center leading-tight">Upload from<br/>Album</span>
+                        </button>
+                        {/* Take photo via camera */}
+                        <button
+                          type="button"
+                          onClick={() => idCameraInputRef.current?.click()}
+                          className="flex-1 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl py-5 flex flex-col items-center gap-2 text-gray-400 hover:border-cyan-400 hover:text-cyan-500 dark:hover:border-cyan-600 transition-colors cursor-pointer bg-slate-50 dark:bg-[#0f141c]"
+                        >
+                          <Camera className="w-5 h-5" />
+                          <span className="text-[11px] font-semibold text-center leading-tight">Take<br/>Photo</span>
+                        </button>
+                      </div>
                     ) : (
                       <div className="relative group rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600">
                         <img
@@ -1085,7 +1098,7 @@ export default function BookingManagement({
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setIdImageFile(null); setIdImagePreview(null); if (idFileInputRef.current) idFileInputRef.current.value = ''; }}
+                            onClick={() => { setIdImageFile(null); setIdImagePreview(null); if (idFileInputRef.current) idFileInputRef.current.value = ''; if (idCameraInputRef.current) idCameraInputRef.current.value = ''; }}
                             className="p-2 bg-rose-500/80 hover:bg-rose-500 rounded-xl text-white transition-colors"
                             title="Remove image"
                           >
@@ -1098,11 +1111,20 @@ export default function BookingManagement({
                       </div>
                     )}
 
-                    {/* Hidden file input */}
+                    {/* Hidden file input — album/gallery */}
                     <input
                       ref={idFileInputRef}
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleIdImageChange}
+                    />
+                    {/* Hidden file input — camera capture */}
+                    <input
+                      ref={idCameraInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
                       className="hidden"
                       onChange={handleIdImageChange}
                     />
