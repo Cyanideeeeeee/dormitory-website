@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange, Settings, KeyRound, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppRole } from '../types';
+import logoV2 from '../assets/images/logo-v2.png';
 
 interface SidebarProps {
   activeTab: 'dashboard' | 'booking' | 'calendar' | 'admin';
@@ -33,7 +34,7 @@ export default function Sidebar({
   const [pwLoading, setPwLoading] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState(false);
-  const logoPath = '/src/assets/images/logo-v2.png';
+  const logoPath = logoV2;
 
   const handleNav = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => {
     onChangeTab(tab);
