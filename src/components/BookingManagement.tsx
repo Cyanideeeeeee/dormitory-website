@@ -311,12 +311,12 @@ export default function BookingManagement({
   return (
     <div className="space-y-5 pt-16 lg:pt-0">
       {/* HEADER SECTION */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
-        <div>
+      <div className="flex items-start sm:items-center justify-between gap-3 border-b-2 border-slate-300 dark:border-[#2d3748] pb-5">
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white font-display">
             Bookings
           </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 font-semibold">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 font-semibold">
             Manage transient bookings, check-in status, and client logs
           </p>
         </div>
@@ -325,15 +325,16 @@ export default function BookingManagement({
         <button
           id="btn-open-booking-form"
           onClick={() => setIsFormOpen(true)}
-          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-md shadow-cyan-500/30 cursor-pointer"
+          className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-colors shadow-md shadow-cyan-500/30 cursor-pointer shrink-0 min-h-[40px]"
         >
-          <Plus className="w-4 h-4" />
-          <span>New Booking</span>
+          <Plus className="w-4 h-4 shrink-0" />
+          <span className="hidden min-[400px]:inline">New Booking</span>
+          <span className="min-[400px]:hidden">New</span>
         </button>
       </div>
 
       {/* FILTER CONTROLS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-white dark:bg-[#151c27] p-3 sm:p-4 rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-md">
         {/* Search */}
         <div className="relative sm:col-span-2">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -420,9 +421,11 @@ export default function BookingManagement({
         </div>
       </div>
 
-      {/* BOOKINGS TABLE */}
+      {/* BOOKINGS TABLE — desktop/tablet */}
       <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-300 dark:border-slate-600 shadow-lg overflow-hidden">
-        <div className="overflow-x-auto">
+
+        {/* ── DESKTOP TABLE (md and up) ── */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-[#0a0f17] text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest border-b-2 border-slate-300 dark:border-slate-600">
@@ -449,10 +452,10 @@ export default function BookingManagement({
                     {/* Border Name & ID */}
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${
+                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                           (() => {
                             if (bk.status !== 'Checked-in') return false;
-                            const checkOutDay = bk.checkOutDate; // YYYY-MM-DD
+                            const checkOutDay = bk.checkOutDate;
                             const checkInTime = bk.checkedInAt ? new Date(bk.checkedInAt) : null;
                             const hours = checkInTime ? checkInTime.getHours() : 12;
                             const minutes = checkInTime ? checkInTime.getMinutes() : 0;
@@ -481,42 +484,22 @@ export default function BookingManagement({
                         </div>
                       </div>
                     </td>
-
-                    {/* Room allocation */}
                     <td className="py-4 px-4">
-                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                        Room {bk.roomNumber}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                        {bk.roomType}
-                      </p>
+                      <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">Room {bk.roomNumber}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{bk.roomType}</p>
                     </td>
-
-                    {/* Dates */}
                     <td className="py-4 px-4">
                       <div className="text-xs">
-                        <p className="font-bold text-gray-700 dark:text-gray-200">
-                          In: <span className="font-mono">{bk.checkInDate}</span>
-                        </p>
-                        <p className="text-gray-500 dark:text-gray-400 font-medium">
-                          Out: <span className="font-mono">{bk.checkOutDate}</span>
-                        </p>
+                        <p className="font-bold text-gray-700 dark:text-gray-200">In: <span className="font-mono">{bk.checkInDate}</span></p>
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">Out: <span className="font-mono">{bk.checkOutDate}</span></p>
                       </div>
                     </td>
-
-                    {/* Cost */}
                     <td className="py-4 px-4">
                       <span className="font-mono font-black text-gray-900 dark:text-white text-sm tracking-tight">
                         ₱{bk.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </span>
                     </td>
-
-                    {/* Badge */}
-                    <td className="py-4 px-4">
-                      {getStatusBadge(bk.status)}
-                    </td>
-
-                    {/* Interactive Action Menu */}
+                    <td className="py-4 px-4">{getStatusBadge(bk.status)}</td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
@@ -527,31 +510,21 @@ export default function BookingManagement({
                           Details
                         </button>
                         {(bk.status === 'Checked-out' || bk.status === 'Cancelled') && (
-                          <span className="text-xs text-gray-400 dark:text-gray-500 font-semibold italic">
-                            Archived
-                          </span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 font-semibold italic">Archived</span>
                         )}
                       </div>
                     </td>
                   </motion.tr>
                 ))}
-                
                 {filteredList.length === 0 && (
                   <tr>
                     <td colSpan={6} className="py-14 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">
-                          No bookings found
-                         {selectedDate
-                          ? ` for ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                           : selectedStatus !== 'All' || selectedRoomType !== 'All' || searchQuery
-                           ? ' matching your filters'
-                           : ''}
+                          No bookings found{selectedDate ? ` for ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : selectedStatus !== 'All' || selectedRoomType !== 'All' || searchQuery ? ' matching your filters' : ''}
                         </p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">
-                             Try selecting a different date or adjusting your filters.
-                        </p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500">Try selecting a different date or adjusting your filters.</p>
                       </div>
                     </td>
                   </tr>
@@ -561,11 +534,94 @@ export default function BookingManagement({
           </table>
         </div>
 
+        {/* ── MOBILE CARD LIST (below md) ── */}
+        <div className="md:hidden divide-y divide-slate-200 dark:divide-slate-700">
+          <AnimatePresence initial={false}>
+            {pagedList.map((bk) => {
+              const isOverdue = (() => {
+                if (bk.status !== 'Checked-in') return false;
+                const checkInTime = bk.checkedInAt ? new Date(bk.checkedInAt) : null;
+                const hours = checkInTime ? checkInTime.getHours() : 12;
+                const minutes = checkInTime ? checkInTime.getMinutes() : 0;
+                const dueAt = new Date(`${bk.checkOutDate}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00`);
+                return new Date() >= dueAt;
+              })();
+              return (
+                <motion.div
+                  key={bk.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors"
+                >
+                  {/* Top row: avatar + name + status badge */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                        isOverdue
+                          ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 ring-2 ring-rose-200 dark:ring-rose-800'
+                          : 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 ring-2 ring-cyan-200 dark:ring-cyan-800'
+                      }`}>
+                        {bk.guestName.split(' ').slice(0, 2).map((n) => n[0]).join('')}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`font-bold text-sm truncate ${isOverdue ? 'text-rose-500 dark:text-rose-400' : 'text-gray-900 dark:text-white'}`}>
+                          {bk.guestName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                          Room {bk.roomNumber} · {bk.roomType}
+                        </p>
+                      </div>
+                    </div>
+                    {getStatusBadge(bk.status)}
+                  </div>
+
+                  {/* Middle row: dates + price */}
+                  <div className="flex items-center justify-between text-xs mb-3">
+                    <div>
+                      <span className="font-bold text-gray-700 dark:text-gray-200">In: </span>
+                      <span className="font-mono text-gray-600 dark:text-gray-300">{bk.checkInDate}</span>
+                      <span className="mx-1.5 text-gray-300 dark:text-gray-600">→</span>
+                      <span className="font-bold text-gray-700 dark:text-gray-200">Out: </span>
+                      <span className="font-mono text-gray-600 dark:text-gray-300">{bk.checkOutDate}</span>
+                    </div>
+                    <span className="font-mono font-black text-gray-900 dark:text-white shrink-0 ml-2">
+                      ₱{bk.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  {/* Bottom row: action */}
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => setSelectedBooking(bk)}
+                      className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px]"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      View Details
+                    </button>
+                    {(bk.status === 'Checked-out' || bk.status === 'Cancelled') && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 font-semibold italic shrink-0">Archived</span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+            {filteredList.length === 0 && (
+              <div className="py-14 text-center">
+                <div className="flex flex-col items-center gap-2">
+                  <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">No bookings found</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">Try adjusting your filters.</p>
+                </div>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* PAGER FOOTER */}
         {filteredList.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0f141c]">
-
-            {/* Record count info */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-5 py-3 border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-[#0f141c]">
             <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 shrink-0">
               Showing{' '}
               <span className="text-gray-800 dark:text-gray-200 font-bold">
@@ -575,30 +631,14 @@ export default function BookingManagement({
               <span className="text-gray-800 dark:text-gray-200 font-bold">{filteredList.length}</span>
               {' '}records
             </p>
-
-            {/* Page buttons — only shown when more than 1 page */}
             {totalPages > 1 && (
-              <div className="flex items-center gap-1">
-                {/* First */}
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={safePage === 1}
-                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="First page"
-                >
-                  «
-                </button>
-                {/* Prev */}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={safePage === 1}
-                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="Previous page"
-                >
-                  ‹
-                </button>
-
-                {/* Page number pills — smart windowing with ellipsis */}
+              <div className="flex items-center gap-1 flex-wrap justify-center">
+                <button onClick={() => setCurrentPage(1)} disabled={safePage === 1}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[36px] min-w-[36px]"
+                  title="First page">«</button>
+                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[36px] min-w-[36px]"
+                  title="Previous page">‹</button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
                   .reduce<(number | '…')[]>((acc, p, idx, arr) => {
@@ -608,42 +648,24 @@ export default function BookingManagement({
                   }, [])
                   .map((item, idx) =>
                     item === '…' ? (
-                      <span key={`ellipsis-${idx}`} className="px-1.5 text-xs text-gray-400 dark:text-gray-600 font-bold select-none">
-                        …
-                      </span>
+                      <span key={`ellipsis-${idx}`} className="px-1.5 text-xs text-gray-400 dark:text-gray-600 font-bold select-none">…</span>
                     ) : (
-                      <button
-                        key={item}
-                        onClick={() => setCurrentPage(item as number)}
-                        className={`w-8 h-8 text-xs font-bold rounded-lg border-2 transition-all ${
+                      <button key={item} onClick={() => setCurrentPage(item as number)}
+                        className={`w-9 h-9 text-xs font-bold rounded-lg border-2 transition-all ${
                           safePage === item
                             ? 'bg-cyan-500 border-cyan-500 text-white shadow-md shadow-cyan-500/40 scale-105'
                             : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        }`}
-                      >
+                        }`}>
                         {item}
                       </button>
                     )
                   )}
-
-                {/* Next */}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={safePage === totalPages}
-                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="Next page"
-                >
-                  ›
-                </button>
-                {/* Last */}
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={safePage === totalPages}
-                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  title="Last page"
-                >
-                  »
-                </button>
+                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[36px] min-w-[36px]"
+                  title="Next page">›</button>
+                <button onClick={() => setCurrentPage(totalPages)} disabled={safePage === totalPages}
+                  className="px-2.5 py-1.5 text-xs font-bold rounded-lg border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-[#151c27] text-gray-500 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all min-h-[36px] min-w-[36px]"
+                  title="Last page">»</button>
               </div>
             )}
           </div>
@@ -663,16 +685,16 @@ export default function BookingManagement({
               className="absolute inset-0 bg-black/50 backdrop-blur-xs"
             />
 
-            <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+            <div className="absolute inset-y-0 right-0 w-full flex sm:pl-10 sm:max-w-full">
               <motion.div
                 initial={{ x: '100%' }}
                 animate={{ x: '0%' }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-                className="w-screen max-w-md bg-white dark:bg-[#0f1520] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
+                className="w-full sm:max-w-md bg-white dark:bg-[#0f1520] h-full shadow-2xl flex flex-col justify-between overflow-y-auto"
               >
                 {/* Form header */}
-                <div className="p-6 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div className="p-4 sm:p-6 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-500" />
                     <h2 className="text-lg font-black text-gray-900 dark:text-white font-display">
@@ -690,7 +712,7 @@ export default function BookingManagement({
                 {/* Form body */}
                 <form
                   onSubmit={handleFormSubmit}
-                  className="flex-1 overflow-y-auto p-6 space-y-5"
+                  className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5"
                 >
                   {/* Name fields */}
                   <div className="space-y-1.5">
@@ -815,7 +837,7 @@ export default function BookingManagement({
                   </div>
 
                   {/* Checkin Checkout range */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider font-display flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
@@ -1087,8 +1109,8 @@ export default function BookingManagement({
                           alt="ID Preview"
                           className="w-full h-40 object-cover"
                         />
-                        {/* Overlay on hover */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        {/* Overlay — always visible on touch, hover on desktop */}
+                        <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                           <button
                             type="button"
                             onClick={() => setLightboxUrl(idImagePreview)}
@@ -1155,7 +1177,7 @@ export default function BookingManagement({
                 </form>
 
                 {/* Form buttons */}
-                <div className="p-6 border-t border-[#c8cdd6] dark:border-slate-700 bg-gray-55/40 dark:bg-[#0e141d] flex flex-col gap-2">
+                <div className="p-4 sm:p-6 border-t border-[#c8cdd6] dark:border-slate-700 bg-gray-55/40 dark:bg-[#0e141d] flex flex-col gap-2 shrink-0">
                   {/* Top row — two action buttons */}
                   <div className="flex items-center gap-2">
                     <button
@@ -1191,7 +1213,7 @@ export default function BookingManagement({
       {/* BOOKING DETAILS MODAL */}
       <AnimatePresence>
         {selectedBooking && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -1203,11 +1225,11 @@ export default function BookingManagement({
 
             {/* Modal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
               transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-              className="relative w-full max-w-md bg-white dark:bg-[#121822] rounded-2xl shadow-2xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative w-full sm:max-w-md bg-white dark:bg-[#121822] sm:rounded-2xl rounded-t-2xl shadow-2xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col"
             >
               {/* Header */}
               <div className="p-5 border-b-2 border-slate-300 dark:border-slate-600 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
@@ -1226,7 +1248,7 @@ export default function BookingManagement({
               </div>
 
               {/* Body */}
-              <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
                 {/* Booking ID + Status */}
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg">
@@ -1261,7 +1283,7 @@ export default function BookingManagement({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
@@ -1280,7 +1302,7 @@ export default function BookingManagement({
                   </div>
 
                   {/* Dates row */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-300 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
@@ -1298,7 +1320,7 @@ export default function BookingManagement({
                   </div>
 
                   {/* Times row */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                     <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
