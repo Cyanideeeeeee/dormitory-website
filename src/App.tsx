@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
-import { BookingRecord, RoomRecord, DayBookingStat, BookingStatus } from './types';
+import { BookingRecord, RoomRecord, DayBookingStat, BookingStatus, AppRole, UserProfile } from './types';
 import LoginPage from './pages/login.tsx';
 import Sidebar from './components/Sidebar';
 import DashboardView from './components/DashboardView';
 import BookingManagement from './components/BookingManagement';
 import CalendarView from './components/CalendarView';
 import AdminView, { PriceSettings } from './components/AdminView';
+
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
 const DARK_MODE_KEY = 'seafarers_admin_dm';
@@ -30,6 +31,11 @@ export default function App() {
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out'>('logged_out');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
+
+  // ── Auth / Role state ────────────────────────────────────────
+  const [userRole, setUserRole]       = useState<AppRole>('admin');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [adminAccounts, setAdminAccounts] = useState<UserProfile[]>([]);
 
   // ── Dark mode (UI preference — still kept in localStorage) ───
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -64,8 +70,56 @@ export default function App() {
 
   const fetchAllData = async () => {
     setDataLoading(true);
-    await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats(), fetchSettings()]);
+    await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats(), fetchSettings(), fetchCurrentProfile(), fetchAdminAccounts()]);
     setDataLoading(false);
+  };
+
+  // ── Fetch current user's profile + role ─────────────────────
+  const fetchCurrentProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !data) return;
+
+    const profile: UserProfile = {
+      id: data.id,
+      fullName: data.full_name ?? 'Admin',
+      email: user.email ?? '',
+      role: data.role ?? 'admin',
+      createdAt: data.created_at ?? '',
+    };
+    setUserProfile(profile);
+    setUserRole(profile.role);
+  };
+
+  // ── Fetch all admin accounts (superadmin only) ───────────────
+  const fetchAdminAccounts = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return;
+
+    const profiles: UserProfile[] = await Promise.all(
+      data.map(async (row: any) => {
+        // Fetch email from auth.users via RPC or just use what we have
+        return {
+          id: row.id,
+          fullName: row.full_name ?? 'Admin',
+          email: row.email ?? '',
+          role: row.role ?? 'admin',
+          createdAt: row.created_at ?? '',
+        };
+      })
+    );
+    setAdminAccounts(profiles);
   };
 
   const fetchBookings = async () => {
@@ -364,6 +418,46 @@ export default function App() {
     }
   };
 
+  // ── Create admin account (superadmin only) ───────────────────
+  const handleCreateAdminAccount = async (fullName: string, password: string): Promise<{ error?: string }> => {
+    // Auto-generate a unique internal email from the full name
+    const slug = fullName.trim().toLowerCase().replace(/\s+/g, '.');
+    const generatedEmail = `${slug}.${Date.now()}@seafarers.local`;
+
+    const { data, error } = await supabase.auth.signUp({ email: generatedEmail, password });
+    if (error) return { error: error.message };
+    if (!data.user) return { error: 'Failed to create user.' };
+
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: data.user.id,
+      full_name: fullName,
+      email: generatedEmail,
+      role: 'admin',
+      created_at: new Date().toISOString(),
+    });
+
+    if (profileError) return { error: profileError.message };
+
+    await fetchAdminAccounts();
+    return {};
+  };
+
+  // ── Delete admin account (superadmin only) ───────────────────
+  const handleDeleteAdminAccount = async (id: string): Promise<{ error?: string }> => {
+    // Delete profile row (RLS will block deleting superadmin rows)
+    const { error } = await supabase.from('profiles').delete().eq('id', id);
+    if (error) return { error: error.message };
+    await fetchAdminAccounts();
+    return {};
+  };
+
+  // ── Change own password ──────────────────────────────────────
+  const handleChangePassword = async (newPassword: string): Promise<{ error?: string }> => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: error.message };
+    return {};
+  };
+
   // ── Auth handlers ────────────────────────────────────────────
   const handleLogin = () => setSessionStatus('logged_in');
   const handleLogout = async () => {
@@ -372,6 +466,8 @@ export default function App() {
     setBookings([]);
     setRooms([]);
     setBookingStats([]);
+    setUserProfile(null);
+    setAdminAccounts([]);
     setActiveTab('dashboard' as const);
   };
   const handleToggleDark = () => setIsDark((prev) => !prev);
@@ -390,7 +486,9 @@ export default function App() {
         isDark={isDark}
         onToggleDark={handleToggleDark}
         onLogout={handleLogout}
-        adminName="Arnel Domondon"
+        adminName={userProfile?.fullName ?? 'Admin'}
+        userRole={userRole}
+        onChangePassword={handleChangePassword}
       />
 
       <main className="lg:ml-64 min-h-screen p-4 sm:p-6 md:p-8 bg-grid-pattern">

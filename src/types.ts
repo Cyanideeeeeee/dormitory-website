@@ -1,3 +1,14 @@
+// ── Auth / Role types ─────────────────────────────────────────
+export type AppRole = 'superadmin' | 'admin';
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AppRole;
+  createdAt: string;
+}
+
 export type UserRoleType = 'Admin' | 'Manager' | 'Staff' | 'Housekeeper' | 'Seafarer';
 
 export interface UserRoleRecord {

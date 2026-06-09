@@ -52,6 +52,16 @@ export default function DashboardView({
   const [localLoading, setLocalLoading] = useState(false);
   const [todayDate, setTodayDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  // Year filters — each chart has its own independent year selector
+  const currentYear = new Date().getFullYear();
+  const availableYears = Array.from({ length: 10 }, (_, i) => currentYear - 7 + i); // 7 past + current + 2 future
+  const [roomStatsYear, setRoomStatsYear] = useState(currentYear);
+  const [bookingStatsYear, setBookingStatsYear] = useState(currentYear);
+  const [revenueYear, setRevenueYear] = useState(currentYear);
+  const [roomYearOpen, setRoomYearOpen] = useState(false);
+  const [bookingYearOpen, setBookingYearOpen] = useState(false);
+  const [revenueYearOpen, setRevenueYearOpen] = useState(false);
+
   // Refresh todayDate at midnight so stats reset automatically each day
   useEffect(() => {
     const msUntilMidnight = () => {
@@ -130,9 +140,9 @@ export default function DashboardView({
     };
   });
 
-  // Chart 2: Monthly Booking Statistics for 2026 — check-ins per month from real bookings
+  // Chart 2: Monthly Booking Statistics — check-ins per month, filtered by selected year
   const monthlyBookingData = ([ 'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec' ] as const).map((month, idx) => {
-    const monthStr = `2026-${String(idx + 1).padStart(2, '0')}`;
+    const monthStr = `${bookingStatsYear}-${String(idx + 1).padStart(2, '0')}`;
     const count = bookings.filter((b) => {
       const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
       const checkedInMonth = (b.checkedInAt ?? b.createdAt ?? '').slice(0, 7);
@@ -146,14 +156,14 @@ export default function DashboardView({
     monthlyBookingData[0]
   );
 
-  // Chart 3: Monthly Revenue for 2026 — derived from real checked-in/checked-out bookings
+  // Chart 3: Monthly Revenue — derived from real checked-in/checked-out bookings, filtered by selected year
   const MONTHS = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ] as const;
 
   const monthlyRevenueData = MONTHS.map((month, idx) => {
-    const monthStr = `2026-${String(idx + 1).padStart(2, '0')}`;
+    const monthStr = `${revenueYear}-${String(idx + 1).padStart(2, '0')}`;
     const revenue = bookings
       .filter((b) => {
         const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';
@@ -300,11 +310,10 @@ export default function DashboardView({
               'Couple room': '#f59e0b',
               'Family room': '#10b981',
             };
-            const currentYear = new Date().getFullYear();
             const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
             const monthlyRoomData = monthLabels.map((month, idx) => {
-              const monthStr = `${currentYear}-${String(idx + 1).padStart(2, '0')}`;
+              const monthStr = `${roomStatsYear}-${String(idx + 1).padStart(2, '0')}`;
               const entry: Record<string, any> = { month };
               roomTypes.forEach((rt) => {
                 entry[rt] = bookings.filter((b) => {
@@ -331,25 +340,47 @@ export default function DashboardView({
                       Monthly Room Statistics
                     </h2>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                      Check-ins per room type — {currentYear}
+                      Check-ins per room type — {roomStatsYear}
                     </p>
                   </div>
-                  {/* Total summary chips */}
-                  <div className="flex flex-wrap gap-2">
-                    {roomTypes.map((rt) => (
-                      <div
-                        key={rt}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
-                        style={{
-                          background: isDark ? colors[rt] + '22' : colors[rt] + '18',
-                          border: `1.5px solid ${colors[rt]}`,
-                          color: isDark ? '#ffffff' : colors[rt],
-                        }}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors[rt] }} />
-                        {rt}: {roomTotals[rt]}
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Year navigator */}
+                    <div className="relative flex items-center gap-1">
+                      <button onClick={() => setRoomStatsYear((y) => Math.max(availableYears[0], y - 1))}
+                        disabled={roomStatsYear <= availableYears[0]}
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                      </button>
+                      <button onClick={() => setRoomYearOpen((o) => !o)}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                        {roomStatsYear}
+                      </button>
+                      <button onClick={() => setRoomStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                        disabled={roomStatsYear >= availableYears[availableYears.length - 1]}
+                        className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                      {roomYearOpen && (
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
+                          {availableYears.map((y) => (
+                            <button key={y} onClick={() => { setRoomStatsYear(y); setRoomYearOpen(false); }}
+                              className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${roomStatsYear === y ? 'bg-cyan-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                              {y}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Total summary chips */}
+                    <div className="flex flex-wrap gap-2">
+                      {roomTypes.map((rt) => (
+                        <div key={rt} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+                          style={{ background: isDark ? colors[rt] + '22' : colors[rt] + '18', border: `1.5px solid ${colors[rt]}`, color: isDark ? '#ffffff' : colors[rt] }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: colors[rt] }} />
+                          {rt}: {roomTotals[rt]}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -448,13 +479,40 @@ export default function DashboardView({
                   Monthly Booking Statistics
                 </h2>
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
-                  January – December 2026
+                  January – December {bookingStatsYear}
                 </p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
+                {/* Year navigator */}
+                <div className="relative flex items-center gap-1">
+                  <button onClick={() => setBookingStatsYear((y) => Math.max(availableYears[0], y - 1))}
+                    disabled={bookingStatsYear <= availableYears[0]}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <button onClick={() => setBookingYearOpen((o) => !o)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                    {bookingStatsYear}
+                  </button>
+                  <button onClick={() => setBookingStatsYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                    disabled={bookingStatsYear >= availableYears[availableYears.length - 1]}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  {bookingYearOpen && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
+                      {availableYears.map((y) => (
+                        <button key={y} onClick={() => { setBookingStatsYear(y); setBookingYearOpen(false); }}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${bookingStatsYear === y ? 'bg-cyan-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-cyan-500 inline-block" />
-                  <span className="text-gray-500 dark:text-gray-300">2026 Total:</span>
+                  <span className="text-gray-500 dark:text-gray-300">{bookingStatsYear} Total:</span>
                   <span className="text-cyan-600 dark:text-cyan-300 font-black">
                     {totalYearBookings} check-in{totalYearBookings !== 1 ? 's' : ''}
                   </span>
@@ -552,7 +610,7 @@ export default function DashboardView({
                   <div className="text-center space-y-1">
                     <TrendingUp className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto" />
                     <p className="text-xs text-gray-400 dark:text-gray-500 font-semibold">
-                      No check-ins recorded for 2026 yet
+                      No check-ins recorded for {bookingStatsYear} yet
                     </p>
                   </div>
                 </div>
@@ -560,7 +618,7 @@ export default function DashboardView({
             </div>
           </div>
 
-          {/* MONTHLY REVENUE CHART — 2026 */}
+          {/* MONTHLY REVENUE CHART */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
@@ -569,15 +627,41 @@ export default function DashboardView({
                   Monthly Revenue
                 </h2>
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
-                  January – December 2026
+                  January – December {revenueYear}
                 </p>
               </div>
-
               {/* Summary pills */}
               <div className="flex items-center gap-3 flex-wrap">
+                {/* Year navigator */}
+                <div className="relative flex items-center gap-1">
+                  <button onClick={() => setRevenueYear((y) => Math.max(availableYears[0], y - 1))}
+                    disabled={revenueYear <= availableYears[0]}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <button onClick={() => setRevenueYearOpen((o) => !o)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-gray-700 dark:text-gray-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors min-w-[52px] text-center">
+                    {revenueYear}
+                  </button>
+                  <button onClick={() => setRevenueYear((y) => Math.min(availableYears[availableYears.length - 1], y + 1))}
+                    disabled={revenueYear >= availableYears[availableYears.length - 1]}
+                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  {revenueYearOpen && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white dark:bg-[#1a2333] border-2 border-slate-300 dark:border-slate-600 rounded-xl shadow-xl p-2 grid grid-cols-2 gap-1 w-32">
+                      {availableYears.map((y) => (
+                        <button key={y} onClick={() => { setRevenueYear(y); setRevenueYearOpen(false); }}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all text-center ${revenueYear === y ? 'bg-emerald-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}>
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                  <span className="text-gray-500 dark:text-gray-300">2026 Total:</span>
+                  <span className="text-gray-500 dark:text-gray-300">{revenueYear} Total:</span>
                   <span className="text-emerald-600 dark:text-emerald-300 font-black">
                     ₱{totalYearRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </span>

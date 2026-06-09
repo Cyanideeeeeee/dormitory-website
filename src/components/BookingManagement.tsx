@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -47,11 +47,8 @@ export default function BookingManagement({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'All' | BookingStatus>('All');
   const [selectedRoomType, setSelectedRoomType] = useState<'All' | RoomType>('All');
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    // Default to current month in YYYY-MM format
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  const [selectedDate, setSelectedDate] = useState<string>(''); // '' = no filter; YYYY-MM-DD = specific day
+  const [dateWarnMsg, setDateWarnMsg] = useState<string>(''); // shown when admin picks a future date
 
   // Pagination
   const ITEMS_PER_PAGE = 20;
@@ -86,8 +83,18 @@ export default function BookingManagement({
 
   const [checkIn, setCheckIn] = useState(todayStr);
   const [checkOut, setCheckOut] = useState(tomorrowStr);
-  const [checkInTime, setCheckInTime] = useState('12:00');
-  const [checkOutTime, setCheckOutTime] = useState('12:00');
+
+  // Helper: get current HH:MM string
+  const getCurrentTimeStr = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const [checkInTime, setCheckInTime] = useState(getCurrentTimeStr);
+  // Check-out time mirrors check-in time by default
+  const [checkOutTime, setCheckOutTime] = useState(getCurrentTimeStr);
+  // Track whether user has manually changed check-out time independently
+  const checkOutTimeManualRef = useRef(false);
   const [customPrice, setCustomPrice] = useState('');
   const [hasDiscount, setHasDiscount] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
@@ -101,6 +108,38 @@ export default function BookingManagement({
 
   // Lightbox state — for viewing any ID image full screen
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Real-time clock: tick check-in time every minute while the form is open
+  const checkInTimeManualRef = useRef(false);
+  useEffect(() => {
+    if (!isFormOpen) return;
+    // Reset manual flags when form opens so it starts live
+    checkInTimeManualRef.current = false;
+    checkOutTimeManualRef.current = false;
+    // Snap to current time immediately on open
+    const now = getCurrentTimeStr();
+    setCheckInTime(now);
+    setCheckOutTime(now);
+
+    const timer = setInterval(() => {
+      if (!checkInTimeManualRef.current) {
+        const t = getCurrentTimeStr();
+        setCheckInTime(t);
+        if (!checkOutTimeManualRef.current) {
+          setCheckOutTime(t);
+        }
+      }
+    }, 10000); // update every 10 seconds
+
+    return () => clearInterval(timer);
+  }, [isFormOpen]);
+
+  // Sync check-out time to check-in time whenever check-in changes (unless manually overridden)
+  useEffect(() => {
+    if (!checkOutTimeManualRef.current) {
+      setCheckOutTime(checkInTime);
+    }
+  }, [checkInTime]);
 
   // Filtering list
   const filteredList = bookings.filter((b) => {
@@ -117,10 +156,10 @@ export default function BookingManagement({
     // Room type filter
     const matchesRoomType = selectedRoomType === 'All' || b.roomType === selectedRoomType;
 
-    // Month filter — match against createdAt (YYYY-MM prefix)
-    const matchesMonth = b.createdAt?.slice(0, 7) === selectedMonth;
+    // Date filter — if a date is selected match full YYYY-MM-DD, otherwise show all
+    const matchesDate = !selectedDate || b.createdAt?.slice(0, 10) === selectedDate;
 
-    return matchesSearch && matchesStatus && matchesRoomType && matchesMonth;
+    return matchesSearch && matchesStatus && matchesRoomType && matchesDate;
   });
 
   // Derived pagination values
@@ -129,7 +168,7 @@ export default function BookingManagement({
   const pagedList  = filteredList.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
 
   // Reset to page 1 whenever any filter changes
-  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedStatus, selectedRoomType, selectedMonth]);
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedStatus, selectedRoomType, selectedDate]);
 
   // Prices from Admin settings — live from Supabase
   const ROOM_PRICES: Record<string, number> = {
@@ -201,8 +240,8 @@ export default function BookingManagement({
       roomNumber: guestRoomNumber || `${100 + Math.floor(Math.random() * 100)}`,
       checkInDate: checkIn,
       checkOutDate: checkOut,
-      checkInTime: checkInTime,
-      checkOutTime: checkOutTime,
+      checkInTime: submitStatus === 'Pending' ? null : checkInTime,
+      checkOutTime: submitStatus === 'Pending' ? null : checkOutTime,
       status: submitStatus,
       price: computedPrice,
       discountAmount: hasDiscount ? (parseFloat(discountAmount) || 0) : 0,
@@ -225,8 +264,10 @@ export default function BookingManagement({
     setCustomPrice('');
     setHasDiscount(false);
     setDiscountAmount('');
-    setCheckInTime('12:00');
-    setCheckOutTime('12:00');
+    checkInTimeManualRef.current = false;
+    checkOutTimeManualRef.current = false;
+    setCheckInTime(getCurrentTimeStr());
+    setCheckOutTime(getCurrentTimeStr());
     setPaymentMode('Cash');
     setReferenceNumber('');
     setIdImageFile(null);
@@ -303,16 +344,42 @@ export default function BookingManagement({
           />
         </div>
 
-        {/* Month Filter */}
-        <div className="flex items-center space-x-2">
-          <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
-          <input
-            id="select-filter-month"
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="w-full text-xs font-bold bg-[#f1f3f6] dark:bg-[#0f141c] text-gray-700 dark:text-gray-300 border-none outline-none focus:ring-1 focus:ring-cyan-500 py-2 px-3 rounded-xl cursor-pointer"
-          />
+        {/* Date Filter — single picker: month → day in one control */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+            <input
+              id="select-filter-date"
+              type="date"
+              value={selectedDate}
+              max={todayStr()}
+              onChange={(e) => {
+                const picked = e.target.value;
+                if (picked && picked > todayStr()) {
+                  setDateWarnMsg("Future dates can't be selected.");
+                  setSelectedDate('');
+                } else {
+                  setDateWarnMsg('');
+                  setSelectedDate(picked);
+                }
+              }}
+              className="w-full text-xs font-bold bg-[#f1f3f6] dark:bg-[#0f141c] text-gray-700 dark:text-gray-300 border-none outline-none focus:ring-1 focus:ring-cyan-500 py-2 px-3 rounded-xl cursor-pointer"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => { setSelectedDate(''); setDateWarnMsg(''); }}
+                className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                title="Clear date filter"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {dateWarnMsg && (
+            <p className="text-[10px] font-semibold text-rose-500 dark:text-rose-400 pl-6">
+              ⚠ {dateWarnMsg}
+            </p>
+          )}
         </div>
 
         {/* Status Filter */}
@@ -472,11 +539,15 @@ export default function BookingManagement({
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                         <p className="text-sm font-semibold text-gray-400 dark:text-gray-500">
-                          No bookings found for{' '}
-                          {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                          No bookings found
+                         {selectedDate
+                          ? ` for ${new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                           : selectedStatus !== 'All' || selectedRoomType !== 'All' || searchQuery
+                           ? ' matching your filters'
+                           : ''}
                         </p>
-                        <p className="text-xs text-gray-300 dark:text-gray-600">
-                          Try selecting a different month or adjusting your filters.
+                          <p className="text-xs text-gray-300 dark:text-gray-600">
+                             Try selecting a different date or adjusting your filters.
                         </p>
                       </div>
                     </td>
@@ -746,6 +817,10 @@ export default function BookingManagement({
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         Check-In
+                        {!checkInTimeManualRef.current && (
+                          <span className="ml-auto text-[9px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-0.5">
+                          </span>
+                        )}
                       </label>
                       <input
                         id="form-check-in"
@@ -767,7 +842,10 @@ export default function BookingManagement({
                         <input
                           type="time"
                           value={checkInTime}
-                          onChange={(e) => setCheckInTime(e.target.value)}
+                          onChange={(e) => {
+                            checkInTimeManualRef.current = true;
+                            setCheckInTime(e.target.value);
+                          }}
                           className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-mono"
                         />
                         <div className="flex rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 shrink-0">
@@ -779,6 +857,7 @@ export default function BookingManagement({
                                 key={period}
                                 type="button"
                                 onClick={() => {
+                                  checkInTimeManualRef.current = true;
                                   const [h, m] = checkInTime.split(':').map(Number);
                                   let newH = h;
                                   if (period === 'AM' && h >= 12) newH = h - 12;
@@ -798,6 +877,10 @@ export default function BookingManagement({
                       <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider font-display flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         Check-Out
+                        {!checkOutTimeManualRef.current && (
+                          <span className="ml-auto text-[9px] font-bold text-cyan-500 dark:text-cyan-400 uppercase tracking-widest">
+                          </span>
+                        )}
                       </label>
                       <input
                         id="form-check-out"
@@ -812,7 +895,10 @@ export default function BookingManagement({
                         <input
                           type="time"
                           value={checkOutTime}
-                          onChange={(e) => setCheckOutTime(e.target.value)}
+                          onChange={(e) => {
+                            checkOutTimeManualRef.current = true;
+                            setCheckOutTime(e.target.value);
+                          }}
                           className="flex-1 px-3 py-2 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-mono"
                         />
                         <div className="flex rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-600 shrink-0">
@@ -824,6 +910,7 @@ export default function BookingManagement({
                                 key={period}
                                 type="button"
                                 onClick={() => {
+                                  checkOutTimeManualRef.current = true;
                                   const [h, m] = checkOutTime.split(':').map(Number);
                                   let newH = h;
                                   if (period === 'AM' && h >= 12) newH = h - 12;
@@ -1030,10 +1117,10 @@ export default function BookingManagement({
                     <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
                       {(
                         formRoomType === 'Couple room'
-                          ? ['Wifi', 'Aircon', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
+                          ? ['Wifi', 'Aircon', 'Free Drinking water', 'Free Parking', 'Smoking Area', 'Canteen Inside']
                           : formRoomType === 'Family room'
-                          ? ['Wifi', 'Aircon', 'Own CR', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
-                          : ['Wifi', 'Free drinking water', 'Free parking', 'Smoking area', 'Canteen inside']
+                          ? ['Wifi', 'Aircon', 'Own CR', 'Free Drinking water', 'Free Parking', 'Smoking Area', 'Canteen Inside']
+                          : ['Wifi', 'Free Drinking water', 'Free Parking', 'Smoking Area', 'Canteen Inside']
                       ).map((amenity) => (
                         <li key={amenity} className="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
@@ -1194,12 +1281,24 @@ export default function BookingManagement({
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-In Time</p>
                         <p className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
-                          {selectedBooking.checkInTime ? (() => {
-                            const [h, m] = selectedBooking.checkInTime!.split(':').map(Number);
-                            const period = h >= 12 ? 'PM' : 'AM';
-                            const displayH = h % 12 || 12;
-                            return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
-                          })() : '—'}
+                          {selectedBooking.status === 'Pending'
+                            ? <span className="text-gray-400 dark:text-gray-600 font-normal italic text-xs">Awaiting check-in</span>
+                            : selectedBooking.checkedInAt
+                              ? (() => {
+                                  const d = new Date(selectedBooking.checkedInAt);
+                                  const h = d.getHours(), m = d.getMinutes();
+                                  const period = h >= 12 ? 'PM' : 'AM';
+                                  const displayH = h % 12 || 12;
+                                  return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                })()
+                              : selectedBooking.checkInTime
+                                ? (() => {
+                                    const [h, m] = selectedBooking.checkInTime!.split(':').map(Number);
+                                    const period = h >= 12 ? 'PM' : 'AM';
+                                    const displayH = h % 12 || 12;
+                                    return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                  })()
+                                : '—'}
                         </p>
                       </div>
                     </div>
@@ -1208,12 +1307,33 @@ export default function BookingManagement({
                       <div>
                         <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Check-Out Time</p>
                         <p className="text-sm font-bold font-mono text-rose-500 dark:text-rose-400">
-                          {selectedBooking.checkOutTime ? (() => {
-                            const [h, m] = selectedBooking.checkOutTime!.split(':').map(Number);
-                            const period = h >= 12 ? 'PM' : 'AM';
-                            const displayH = h % 12 || 12;
-                            return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
-                          })() : '—'}
+                          {selectedBooking.status === 'Pending'
+                            ? <span className="text-gray-400 dark:text-gray-600 font-normal italic text-xs">Awaiting check-in</span>
+                            : selectedBooking.checkedOutAt
+                              ? (() => {
+                                  const d = new Date(selectedBooking.checkedOutAt);
+                                  const h = d.getHours(), m = d.getMinutes();
+                                  const period = h >= 12 ? 'PM' : 'AM';
+                                  const displayH = h % 12 || 12;
+                                  return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                })()
+                              : selectedBooking.checkedInAt && !selectedBooking.checkOutTime
+                                ? (() => {
+                                    // Mirror check-in time (was a Pending → Checked-in transition, no check-out time set)
+                                    const d = new Date(selectedBooking.checkedInAt);
+                                    const h = d.getHours(), m = d.getMinutes();
+                                    const period = h >= 12 ? 'PM' : 'AM';
+                                    const displayH = h % 12 || 12;
+                                    return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                  })()
+                              : selectedBooking.checkOutTime
+                                ? (() => {
+                                    const [h, m] = selectedBooking.checkOutTime!.split(':').map(Number);
+                                    const period = h >= 12 ? 'PM' : 'AM';
+                                    const displayH = h % 12 || 12;
+                                    return `${String(displayH).padStart(2,'0')}:${String(m).padStart(2,'0')} ${period}`;
+                                  })()
+                                : '—'}
                         </p>
                       </div>
                     </div>

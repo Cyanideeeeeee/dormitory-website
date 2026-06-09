@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange, Settings } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange, Settings, KeyRound, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { AppRole } from '../types';
 
 interface SidebarProps {
   activeTab: 'dashboard' | 'booking' | 'calendar' | 'admin';
@@ -9,6 +10,8 @@ interface SidebarProps {
   onToggleDark: () => void;
   onLogout: () => void;
   adminName: string;
+  userRole: AppRole;
+  onChangePassword: (newPassword: string) => Promise<{ error?: string }>;
 }
 
 export default function Sidebar({
@@ -18,13 +21,40 @@ export default function Sidebar({
   onToggleDark,
   onLogout,
   adminName,
+  userRole,
+  onChangePassword,
 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState(false);
   const logoPath = '/src/assets/images/logo-v2.png';
 
   const handleNav = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => {
     onChangeTab(tab);
     setMobileOpen(false);
+  };
+
+  const handlePasswordSubmit = async () => {
+    setPwError('');
+    if (newPassword.length < 6) { setPwError('Password must be at least 6 characters.'); return; }
+    if (newPassword !== confirmPassword) { setPwError('Passwords do not match.'); return; }
+    setPwLoading(true);
+    const result = await onChangePassword(newPassword);
+    setPwLoading(false);
+    if (result?.error) { setPwError(result.error); return; }
+    setPwSuccess(true);
+    setTimeout(() => {
+      setPwSuccess(false);
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    }, 2000);
   };
 
   const menuItems = [
@@ -122,15 +152,21 @@ export default function Sidebar({
           </span>
         </button>
 
-        <div className="flex items-center space-x-3 p-2.5 bg-white/60 dark:bg-slate-800/10 rounded-xl border border-slate-200 dark:border-slate-700/20">
+        <button
+          onClick={() => { setShowPasswordModal(true); setPwError(''); setPwSuccess(false); }}
+          className="flex items-center space-x-3 p-2.5 bg-white/60 dark:bg-slate-800/10 rounded-xl border border-slate-200 dark:border-slate-700/20 w-full text-left hover:bg-white dark:hover:bg-slate-800/30 transition-colors group"
+        >
           <div className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold text-xs shadow-inner shrink-0">
             {adminName.split(' ').map(n => n[0]).join('')}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{adminName}</p>
-            <p className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium">Administrator</p>
+            <p className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium capitalize">
+              {userRole === 'superadmin' ? 'Super Admin' : 'Administrator'}
+            </p>
           </div>
-        </div>
+          <KeyRound className="w-3.5 h-3.5 text-gray-400 group-hover:text-cyan-500 transition-colors shrink-0" />
+        </button>
 
         <button
           onClick={onLogout}
@@ -188,6 +224,117 @@ export default function Sidebar({
       <aside className="hidden lg:flex lg:flex-col w-64 bg-[#f1f3f6] dark:bg-[#0f141c] border-r border-slate-200 dark:border-[#212936] h-screen fixed top-0 left-0 transition-colors duration-300 overflow-y-auto">
         <SidebarContent />
       </aside>
+
+      {/* CHANGE PASSWORD MODAL */}
+      <AnimatePresence>
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+              onClick={() => setShowPasswordModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
+            <motion.div
+              initial={{opacity:0, scale:0.95, y:10}} animate={{opacity:1, scale:1, y:0}}
+              exit={{opacity:0, scale:0.95, y:10}}
+              transition={{type:'spring', damping:25, stiffness:280}}
+              className="relative w-full max-w-sm bg-white dark:bg-[#121822] rounded-2xl shadow-2xl border-2 border-slate-300 dark:border-slate-600 overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-5 border-b-2 border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-[#0e141d]">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-cyan-500" />
+                  <h2 className="text-sm font-bold text-gray-900 dark:text-white font-display uppercase tracking-wider">Change Password</h2>
+                </div>
+                <button onClick={() => setShowPasswordModal(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                {pwSuccess ? (
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">Password changed successfully!</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <div className="w-8 h-8 rounded-full bg-cyan-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                        {adminName.split(' ').map(n => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">{adminName}</p>
+                        <p className="text-[10px] text-cyan-600 dark:text-cyan-400 capitalize">{userRole === 'superadmin' ? 'Super Admin' : 'Administrator'}</p>
+                      </div>
+                    </div>
+
+                    {/* New password */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">New Password</label>
+                      <div className="relative">
+                        <input
+                          type={showNew ? 'text' : 'password'}
+                          placeholder="Enter new password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                        />
+                        <button type="button" onClick={() => setShowNew(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                          {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm password */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confirm Password</label>
+                      <div className="relative">
+                        <input
+                          type={showConfirm ? 'text' : 'password'}
+                          placeholder="Confirm new password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+                          className="w-full px-4 py-2.5 pr-10 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
+                        />
+                        <button type="button" onClick={() => setShowConfirm(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                          {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {pwError && (
+                      <p className="text-xs text-rose-500 font-semibold flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />{pwError}
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button onClick={() => setShowPasswordModal(false)}
+                        className="py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
+                        Cancel
+                      </button>
+                      <button onClick={handlePasswordSubmit} disabled={pwLoading}
+                        className="py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                        {pwLoading ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                          </svg>
+                        ) : <KeyRound className="w-3.5 h-3.5" />}
+                        {pwLoading ? 'Saving…' : 'Update Password'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
