@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange, Settings, KeyRound, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, LogOut, Moon, Sun, Menu, X, CalendarRange, Settings, KeyRound, Eye, EyeOff, CheckCircle2, FileSpreadsheet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppRole } from '../types';
 import logoV2 from '../assets/images/logo-v2.png';
 
 interface SidebarProps {
-  activeTab: 'dashboard' | 'booking' | 'calendar' | 'admin';
-  onChangeTab: (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => void;
+  activeTab: 'dashboard' | 'booking' | 'calendar' | 'admin' | 'export';
+  onChangeTab: (tab: 'dashboard' | 'booking' | 'calendar' | 'admin' | 'export') => void;
   isDark: boolean;
   onToggleDark: () => void;
   onLogout: () => void;
@@ -36,7 +36,7 @@ export default function Sidebar({
   const [pwSuccess, setPwSuccess] = useState(false);
   const logoPath = logoV2;
 
-  const handleNav = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => {
+  const handleNav = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin' | 'export') => {
     onChangeTab(tab);
     setMobileOpen(false);
   };
@@ -63,6 +63,7 @@ export default function Sidebar({
     { id: 'booking'   as const, label: 'Booking',   icon: CalendarDays },
     { id: 'calendar'  as const, label: 'Calendar',  icon: CalendarRange },
     { id: 'admin'     as const, label: 'Admin',      icon: Settings },
+    { id: 'export'    as const, label: 'Export',     icon: FileSpreadsheet },
   ];
 
   const SidebarContent = () => (

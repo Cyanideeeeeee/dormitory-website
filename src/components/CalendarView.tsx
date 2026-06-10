@@ -412,7 +412,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                     { icon: <Mail className="w-4 h-4 text-cyan-500 shrink-0" />, label: 'Email', value: selectedBooking.email || '—' },
                     { icon: <Hash className="w-4 h-4 text-cyan-500 shrink-0" />, label: 'Contact Number', value: selectedBooking.contactNumber || '—', mono: true },
                   ].map((row) => (
-                    <div key={row.label} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                    <div key={row.label} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border-2 border-slate-200 dark:border-slate-600">
                       {row.icon}
                       <div className="min-w-0">
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">{row.label}</p>
@@ -423,14 +423,14 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
 
                   {/* Room info grid */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border-2 border-slate-200 dark:border-slate-600">
                       <Bed className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Room Type</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.roomType}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border-2 border-slate-200 dark:border-slate-600">
                       <Hash className="w-4 h-4 text-cyan-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Room No.</p>
@@ -441,14 +441,14 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
 
                   {/* Date grid */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border-2 border-slate-200 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Check-In Date</p>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{selectedBooking.checkInDate}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-700/60">
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border-2 border-slate-200 dark:border-slate-600">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">Check-Out Date</p>
@@ -461,7 +461,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
 
                   {/* Time grid */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border-2 border-emerald-200 dark:border-emerald-700/60">
                       <Calendar className="w-4 h-4 text-emerald-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold">Check-In Time</p>
@@ -478,7 +478,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/40">
+                    <div className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border-2 border-rose-200 dark:border-rose-700/60">
                       <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider font-semibold">Check-Out Time</p>
@@ -490,7 +490,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                   </div>
 
                   {/* Price breakdown */}
-                  <div className="p-3.5 bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/20 dark:to-sky-950/10 rounded-xl border border-cyan-200 dark:border-cyan-800/60 space-y-2.5">
+                  <div className="p-3.5 bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/20 dark:to-sky-950/10 rounded-xl border-2 border-cyan-300 dark:border-cyan-700 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-cyan-500 shrink-0" />
@@ -515,7 +515,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                         return (
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">
-                              Room Price <span className="text-[10px] text-gray-400 dark:text-gray-500 font-normal">({nights}n × ₱{pricePerNight.toLocaleString()})</span>
+                              Room Price <span className="text-[10px] text-gray-500 dark:text-gray-500 font-normal">({nights} Night × ₱{pricePerNight.toLocaleString()})</span>
                             </span>
                             <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">₱{basePrice.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
                           </div>
@@ -523,7 +523,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                       })()}
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold">
-                          🔑 Key Deposit <span className="text-[10px] text-gray-400 dark:text-gray-500 font-normal">(refundable)</span>
+                           Key Deposit <span className="text-[10px] text-gray-500 dark:text-gray-500 font-normal">(refundable)</span>
                         </span>
                         <span className="text-sm font-bold font-mono text-gray-800 dark:text-gray-100">₱{KEY_DEPOSIT.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
                       </div>
@@ -546,7 +546,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
 
                   {/* GCash ref */}
                   {selectedBooking.paymentMode === 'GCash' && selectedBooking.referenceNumber && (
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-xl border-2 border-blue-200 dark:border-blue-700/60">
                       <Hash className="w-4 h-4 text-blue-500 shrink-0" />
                       <div>
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">GCash Reference No.</p>
@@ -574,21 +574,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                     </div>
                   )}
 
-                  {/* Timestamps */}
-                  <div className="space-y-1.5">
-                    {selectedBooking.checkedInAt && (
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-                        Checked-in at {new Date(selectedBooking.checkedInAt).toLocaleString('en-PH',{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}
-                      </p>
-                    )}
-                    {selectedBooking.checkedOutAt && (
-                      <p className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold flex items-center justify-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block shrink-0" />
-                        Checked-out at {new Date(selectedBooking.checkedOutAt).toLocaleString('en-PH',{month:'short',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})}
-                      </p>
-                    )}
-                  </div>
+
                 </div>
               </div>
 

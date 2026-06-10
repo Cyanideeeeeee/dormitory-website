@@ -115,7 +115,7 @@ export default function DashboardView({
       (b) => (b.status === 'Checked-in' || b.status === 'Checked-out') &&
               b.checkedInAt?.slice(0, 10) === todayDate
     );
-    const income = checkedInToday.reduce((sum, b) => sum + b.price - (b.keyDeposit ?? 0), 0);
+    const income = checkedInToday.reduce((sum, b) => sum + b.price - (b.keyDeposit ?? 0) - (b.refundAmount ?? 0), 0);
 
     // Bookings checked OUT today that were checked in on a PRIOR day:
     // their price was already counted on that prior day, so we only need to subtract the deposit refund
@@ -124,7 +124,7 @@ export default function DashboardView({
               b.checkedOutAt?.slice(0, 10) === todayDate &&
               b.checkedInAt?.slice(0, 10) !== todayDate
     );
-    const refunds = checkedOutTodayPrior.reduce((sum, b) => sum + (b.keyDeposit ?? 0), 0);
+    const refunds = checkedOutTodayPrior.reduce((sum, b) => sum + (b.keyDeposit ?? 0) + (b.refundAmount ?? 0), 0);
 
     return income - refunds;
   })();
@@ -191,8 +191,10 @@ export default function DashboardView({
       })
       .reduce((sum, b) => {
         // Key deposit is refundable — never counts as real revenue
+        // Early checkout refund also deducted — only earned nights count
         const deposit = b.keyDeposit ?? 0;
-        return sum + b.price - deposit;
+        const refund  = b.refundAmount ?? 0;
+        return sum + b.price - deposit - refund;
       }, 0);
     const checkIns = bookings.filter((b) => {
       const isConfirmed = b.status === 'Checked-in' || b.status === 'Checked-out';

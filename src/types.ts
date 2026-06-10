@@ -48,6 +48,10 @@ export interface BookingRecord {
   price: number;
   discountAmount?: number;
   keyDeposit?: number;
+  refundAmount?: number;         // early checkout refund issued to guest
+  actualCheckOutDate?: string;   // real date guest left (differs from checkOutDate on early checkout)
+  overstayDays?: number;         // number of days guest stayed past scheduled check-out
+  overstayPenalty?: number;      // penalty charged for overstay (overstayDays × nightly rate)
   createdAt: string;
   checkedInAt?: string | null;
   checkedOutAt?: string | null;

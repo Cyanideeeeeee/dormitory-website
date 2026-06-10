@@ -8,6 +8,7 @@ import DashboardView from './components/DashboardView';
 import BookingManagement from './components/BookingManagement';
 import CalendarView from './components/CalendarView';
 import AdminView, { PriceSettings } from './components/AdminView';
+import ExportView from './components/ExportView';
 
 import LoadingSpinner from './components/UI/LoadingSpinner';
 
@@ -27,7 +28,7 @@ export default function App() {
   });
 
   // ── UI state ─────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar' | 'admin'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'booking' | 'calendar' | 'admin' | 'export'>('dashboard');
   const [sessionStatus, setSessionStatus] = useState<'logged_in' | 'logged_out' | 'loading'>('loading');
   const [appLoading, setAppLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -181,6 +182,10 @@ export default function App() {
       checkOutTime: row.check_out_time ?? '12:00',
       discountAmount: row.discount_amount ?? 0,
       keyDeposit: row.key_deposit ?? 0,
+      refundAmount: row.refund_amount ?? 0,
+      actualCheckOutDate: row.actual_check_out_date ?? null,
+      overstayDays: row.overstay_days ?? 0,
+      overstayPenalty: row.overstay_penalty ?? 0,
     }));
     setBookings(mapped);
   };
@@ -257,9 +262,20 @@ export default function App() {
       .upsert(upserts, { onConflict: 'key' });
 
     if (error) throw new Error(error.message);
-
-    // Update local state immediately
     setSettings(updated);
+  };
+
+  // ── Save room slots → Supabase ───────────────────────────────
+  const handleSaveRoomSlots = async (roomId: string, totalRooms: number) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (!room) return;
+    const newAvailable = Math.max(0, totalRooms - room.occupiedRooms);
+    const { error } = await supabase
+      .from('rooms')
+      .update({ total_rooms: totalRooms, available_rooms: newAvailable })
+      .eq('id', roomId);
+    if (error) throw new Error(error.message);
+    await fetchRooms();
   };
 
   // ── Audio alert ──────────────────────────────────────────────
@@ -280,7 +296,7 @@ export default function App() {
   };
 
   // ── Tab switching ────────────────────────────────────────────
-  const handleTabChange = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin') => {
+  const handleTabChange = (tab: 'dashboard' | 'booking' | 'calendar' | 'admin' | 'export') => {
     setAppLoading(true);
     setActiveTab(tab);
     setTimeout(() => setAppLoading(false), 250);
@@ -395,18 +411,50 @@ export default function App() {
   };
 
   // ── Extend booking → Supabase ────────────────────────────────
-  const handleExtendBooking = async (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => {
+  // Called from both normal extend and overstay-then-extend scenario.
+  // When overstayPenalty is provided the guest is paying both the extension
+  // cost AND the accumulated overstay penalty in one transaction.
+  const handleExtendBooking = async (
+    id: string,
+    newCheckOut: string,
+    extraPrice: number,
+    extendPaymentMode: 'Cash' | 'GCash',
+    extendReferenceNumber: string,
+    overstayPenalty: number = 0,
+  ) => {
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
 
+    const totalExtra = extraPrice + overstayPenalty;
+
+    const updatePayload: any = {
+      check_out_date: newCheckOut,
+      price: booking.price + totalExtra,
+      payment_mode: extendPaymentMode,
+      reference_number: extendPaymentMode === 'GCash' ? extendReferenceNumber : (booking.referenceNumber || null),
+    };
+
+    // If there was an overstay involved, record it on the booking record
+    if (overstayPenalty > 0) {
+      const checkedInDate = booking.checkInDate;
+      const scheduledOut  = booking.checkOutDate; // old checkout before extension
+      const bookedNights  = Math.max(1, Math.round(
+        (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
+      ));
+      const today         = new Date().toISOString().split('T')[0];
+      const actualNights  = Math.max(1, Math.round(
+        (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
+      ));
+      const overstayDays  = Math.max(0, actualNights - bookedNights);
+
+      updatePayload.overstay_days    = overstayDays;
+      updatePayload.overstay_penalty = overstayPenalty;
+      updatePayload.actual_check_out_date = today; // records when overstay was detected
+    }
+
     const { error } = await supabase
       .from('bookings')
-      .update({
-        check_out_date: newCheckOut,
-        price: booking.price + extraPrice,
-        payment_mode: extendPaymentMode,
-        reference_number: extendPaymentMode === 'GCash' ? extendReferenceNumber : (booking.referenceNumber || null),
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (error) {
@@ -415,9 +463,98 @@ export default function App() {
       return;
     }
 
+    // Credit extension cost to today's stats (no new booking count)
+    if (extraPrice > 0)      await updateTodayStats(extraPrice, false);
+    // Credit overstay penalty to today's stats if applicable
+    if (overstayPenalty > 0) await updateTodayStats(overstayPenalty, false);
+
     await fetchAllData();
     playAlertSound();
   };
+
+  // ── Early checkout → Supabase ─────────────────────────────────
+  // Sets status to Checked-out, records the actual check-out date,
+  // and stores the refund amount so revenue analytics deduct it automatically.
+  const handleEarlyCheckout = async (id: string, actualCheckOutDate: string, refundAmount: number) => {
+    const nowISO = new Date().toISOString();
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        status: 'Checked-out',
+        checked_out_at: nowISO,
+        actual_check_out_date: actualCheckOutDate,
+        refund_amount: refundAmount,
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error processing early checkout:', error.message);
+      alert('Failed to process early check-out. Please try again.');
+      return;
+    }
+
+    // Free up the room slot
+    await updateRoomOccupancy(booking.roomType, 'decrement');
+
+    // Adjust today's revenue stats:
+    // Deduct key deposit refund + early checkout refund
+    const deposit = booking.keyDeposit ?? 0;
+    const totalDeduction = deposit + refundAmount;
+    if (totalDeduction > 0) await updateTodayStats(-totalDeduction, false);
+
+    await fetchAllData();
+    playAlertSound();
+  };
+
+  // ── Overstay checkout → Supabase ─────────────────────────────
+  // Applies overstay penalty to the booking, marks as Checked-out,
+  // records actual check-out date, and adds penalty revenue to stats.
+  const handleOverstayCheckout = async (
+    id: string,
+    actualCheckOutDate: string,
+    overstayDays: number,
+    overstayPenalty: number,
+  ) => {
+    const nowISO  = new Date().toISOString();
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        status: 'Checked-out',
+        checked_out_at: nowISO,
+        actual_check_out_date: actualCheckOutDate,
+        overstay_days: overstayDays,
+        overstay_penalty: overstayPenalty,
+        // Increase the stored price so reports reflect the total collected
+        price: booking.price + overstayPenalty,
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error processing overstay checkout:', error.message);
+      alert('Failed to process overstay check-out. Please try again.');
+      return;
+    }
+
+    // Free up the room slot
+    await updateRoomOccupancy(booking.roomType, 'decrement');
+
+    // Deduct key deposit from today's revenue stats (it's refunded to the guest)
+    const deposit = booking.keyDeposit ?? 0;
+    if (deposit > 0) await updateTodayStats(-deposit, false);
+
+    // Add the overstay penalty to today's revenue
+    if (overstayPenalty > 0) await updateTodayStats(overstayPenalty, false);
+
+    await fetchAllData();
+    playAlertSound();
+  };
+
   const updateRoomOccupancy = async (roomType: string, direction: 'increment' | 'decrement') => {
     const room = rooms.find((r) => r.type === roomType);
     if (!room) return;
@@ -510,7 +647,7 @@ export default function App() {
     setBookingStats([]);
     setUserProfile(null);
     setAdminAccounts([]);
-    setActiveTab('dashboard' as const);
+    setActiveTab('dashboard');
   };
   const handleToggleDark = () => setIsDark((prev) => !prev);
 
@@ -596,6 +733,8 @@ export default function App() {
                 onAddBooking={handleAddBooking}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
                 onExtendBooking={handleExtendBooking}
+                onEarlyCheckout={handleEarlyCheckout}
+                onOverstayCheckout={handleOverstayCheckout}
               />
             )}
             {activeTab === 'calendar' && (
@@ -609,6 +748,14 @@ export default function App() {
               <AdminView
                 settings={settings}
                 onSaveSettings={handleSaveSettings}
+                rooms={rooms}
+                onSaveRoomSlots={handleSaveRoomSlots}
+              />
+            )}
+            {activeTab === 'export' && (
+              <ExportView
+                bookings={bookings}
+                rooms={rooms}
               />
             )}
           </motion.div>

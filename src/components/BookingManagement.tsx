@@ -22,6 +22,8 @@ import {
   ZoomIn,
   CalendarPlus,
   Camera,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus, RoomRecord, RoomType } from '../types';
@@ -33,7 +35,9 @@ interface BookingManagementProps {
   settings: PriceSettings;
   onAddBooking: (booking: BookingRecord, idImageFile?: File | null) => void;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
-  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
+  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string, overstayPenalty?: number) => void;
+  onEarlyCheckout: (id: string, actualCheckOutDate: string, refundAmount: number) => void;
+  onOverstayCheckout: (id: string, actualCheckOutDate: string, overstayDays: number, overstayPenalty: number) => void;
 }
 
 export default function BookingManagement({
@@ -43,6 +47,8 @@ export default function BookingManagement({
   onAddBooking,
   onUpdateBookingStatus,
   onExtendBooking,
+  onEarlyCheckout,
+  onOverstayCheckout,
 }: BookingManagementProps) {
   // Local UI lists/states
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,6 +72,17 @@ export default function BookingManagement({
   const [extendCheckOut, setExtendCheckOut] = useState('');
   const [extendPaymentMode, setExtendPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
   const [extendReferenceNumber, setExtendReferenceNumber] = useState('');
+
+  // Early check-out confirmation state
+  const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
+
+  // Overstay check-out confirmation state
+  const [showOverstayCheckout, setShowOverstayCheckout] = useState(false);
+
+  // Extend stay confirmation modal state
+  const [showExtendConfirm, setShowExtendConfirm] = useState(false);
+  // When extending from an overstay context, carry the pending penalty into the confirm modal
+  const [pendingOverstayPenaltyForExtend, setPendingOverstayPenaltyForExtend] = useState(0);
   
   // Simple form fields
   const [firstName, setFirstName] = useState('');
@@ -760,7 +777,7 @@ export default function BookingManagement({
                     <input
                       id="form-guest-email"
                       type="email"
-                      placeholder="Border Email Address"
+                      placeholder="Email Address"
                       value={guestEmail}
                       onChange={(e) => setGuestEmail(e.target.value)}
                       className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl text-gray-800 dark:text-gray-200 font-semibold"
@@ -1061,11 +1078,12 @@ export default function BookingManagement({
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">₱</span>
                         <input
-                          type="number"
-                          min="0"
+                          type="text"
+                          inputMode="numeric"
                           placeholder="Enter discount amount"
                           value={discountAmount}
-                          onChange={(e) => setDiscountAmount(e.target.value)}
+                          onChange={(e) => setDiscountAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                          onWheel={(e) => (e.target as HTMLInputElement).blur()}
                           className="w-full px-4 py-2.5 text-sm bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-800 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 rounded-xl text-amber-700 dark:text-amber-300 font-semibold font-mono"
                         />
                       </div>
@@ -1382,6 +1400,61 @@ export default function BookingManagement({
                     </div>
                   </div>
 
+                  {/* ── Live Overstay Alert — shown when guest is still Checked-in past their check-out date ── */}
+                  {(() => {
+                    if (selectedBooking.status !== 'Checked-in') return null;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const due = new Date(selectedBooking.checkOutDate);
+                    due.setHours(0, 0, 0, 0);
+                    const overstayDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+                    if (overstayDays <= 0) return null;
+                    const nightlyRate = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                    const livePenalty = overstayDays * nightlyRate;
+                    return (
+                      <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-xl border-2 border-orange-400 dark:border-orange-600 space-y-2.5">
+                        {/* Alert header */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/40">
+                            <AlertTriangle className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-orange-700 dark:text-orange-400 uppercase tracking-wider">
+                              Active Overstay Detected
+                            </p>
+                            <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium">
+                              Guest was due to check out on {selectedBooking.checkOutDate}
+                            </p>
+                          </div>
+                          <span className="ml-auto shrink-0 px-2.5 py-1 bg-orange-500 text-white text-xs font-black rounded-lg shadow shadow-orange-500/30">
+                            +{overstayDays} day{overstayDays !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {/* Breakdown row */}
+                        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-orange-200 dark:border-orange-700/50">
+                          <div className="text-center p-2 bg-white dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-700/50">
+                            <p className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider mb-0.5">Overstay Days</p>
+                            <p className="text-lg font-black text-orange-600 dark:text-orange-300 leading-none">{overstayDays}</p>
+                            <p className="text-[9px] text-orange-400 dark:text-orange-500 font-medium mt-0.5">day{overstayDays !== 1 ? 's' : ''}</p>
+                          </div>
+                          <div className="text-center p-2 bg-white dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-700/50">
+                            <p className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider mb-0.5">Nightly Rate</p>
+                            <p className="text-sm font-black text-orange-600 dark:text-orange-300 leading-none font-mono">₱{nightlyRate.toLocaleString()}</p>
+                            <p className="text-[9px] text-orange-400 dark:text-orange-500 font-medium mt-0.5">per night</p>
+                          </div>
+                          <div className="text-center p-2 bg-orange-500 dark:bg-orange-600 rounded-lg shadow-sm shadow-orange-500/30">
+                            <p className="text-[9px] font-bold text-white/80 uppercase tracking-wider mb-0.5">Penalty Due</p>
+                            <p className="text-sm font-black text-white leading-none font-mono">₱{livePenalty.toLocaleString()}</p>
+                            <p className="text-[9px] text-white/70 font-medium mt-0.5">accruing</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium text-center">
+                          Use <span className="font-black">Overstay Check-Out</span> in the footer to collect the penalty and close this booking.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
                   <div className="p-3 bg-cyan-50 dark:bg-cyan-950/20 rounded-xl border border-cyan-300 dark:border-cyan-700 space-y-2">
                     {/* Header row */}
                     <div className="flex items-center justify-between">
@@ -1447,15 +1520,90 @@ export default function BookingManagement({
                           </span>
                         </div>
                       )}
+
+                      {/* Early checkout refund row — only when refund was issued */}
+                      {(selectedBooking.refundAmount ?? 0) > 0 && (
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-200 dark:border-rose-800/50">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <RotateCcw className="w-3 h-3 text-rose-700 dark:text-rose-400 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-rose-700 dark:text-rose-400 font-bold leading-tight">
+                                Early Check-Out Refund
+                              </p>
+                              {selectedBooking.actualCheckOutDate && (
+                                <p className="text-[10px] font-normal text-rose-500 dark:text-rose-400 leading-tight">
+                                  checked out {selectedBooking.actualCheckOutDate}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400 shrink-0 ml-2">
+                            − ₱{(selectedBooking.refundAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Overstay penalty row — only when penalty was recorded on check-out */}
+                      {(selectedBooking.overstayPenalty ?? 0) > 0 && (
+                        <div className="px-2 py-2 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-700 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400 shrink-0" />
+                              <p className="text-xs text-orange-700 dark:text-orange-400 font-bold leading-tight">
+                                Overstay Penalty Charged
+                              </p>
+                            </div>
+                            <span className="text-sm font-black font-mono text-orange-600 dark:text-orange-400 shrink-0 ml-2">
+                              + ₱{(selectedBooking.overstayPenalty ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-orange-200 dark:border-orange-700/50">
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-orange-950/40 rounded border border-orange-200 dark:border-orange-700/50">
+                              <span className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase">Days Overstayed:</span>
+                              <span className="text-xs font-black text-orange-700 dark:text-orange-300 ml-auto">
+                                {selectedBooking.overstayDays ?? '—'} day{(selectedBooking.overstayDays ?? 0) !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 px-2 py-1 bg-white dark:bg-orange-950/40 rounded border border-orange-200 dark:border-orange-700/50">
+                              <span className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase">Rate:</span>
+                              <span className="text-xs font-black text-orange-700 dark:text-orange-300 ml-auto font-mono">
+                                ₱{(ROOM_PRICES[selectedBooking.roomType] ?? 0).toLocaleString()}/night
+                              </span>
+                            </div>
+                          </div>
+                          {selectedBooking.actualCheckOutDate && (
+                            <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium">
+                              Checked out: {selectedBooking.actualCheckOutDate}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Total */}
-                    <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-2">
-                      <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
-                      <span className="text-xl font-black font-mono text-cyan-600 dark:text-cyan-400 tracking-tight">
-                        ₱{selectedBooking.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
+                    {/* Total Revenue — excludes key deposit (refundable) and deducts early checkout refund */}
+                    {(() => {
+                      const keyDep       = selectedBooking.keyDeposit ?? 0;
+                      const refund       = selectedBooking.refundAmount ?? 0;
+                      const penalty      = selectedBooking.overstayPenalty ?? 0;
+                      const totalRevenue = selectedBooking.price - keyDep - refund;
+                      return (
+                        <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700 pt-2">
+                          <div>
+                            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">
+                              Total Revenue:
+                            </span>
+                            {penalty > 0 && (
+                              <p className="text-[10px] text-orange-500 dark:text-orange-400 font-semibold mt-0.5">
+                                incl. ₱{penalty.toLocaleString()} overstay penalty
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-xl font-black font-mono text-cyan-600 dark:text-cyan-400 tracking-tight">
+                            ₱{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* GCash Reference Number */}
@@ -1494,27 +1642,7 @@ export default function BookingManagement({
                   </div>
                 )}
 
-                {/* Check-in / Check-out timestamps */}
-                <div className="space-y-1.5">
-                  {selectedBooking.checkedInAt && (
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-                      Checked-in at {new Date(selectedBooking.checkedInAt).toLocaleString('en-PH', {
-                        month: 'short', day: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                      })}
-                    </p>
-                  )}
-                  {selectedBooking.checkedOutAt && (
-                    <p className="text-[10px] text-blue-500 dark:text-blue-400 font-semibold flex items-center justify-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block shrink-0" />
-                      Checked-out at {new Date(selectedBooking.checkedOutAt).toLocaleString('en-PH', {
-                        month: 'short', day: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                      })}
-                    </p>
-                  )}
-                </div>
+
               </div>
 
               {/* Footer */}
@@ -1545,7 +1673,7 @@ export default function BookingManagement({
                     {/* Extra payment preview */}
                     {extendCheckOut && extendCheckOut > selectedBooking.checkOutDate && (() => {
                       const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / (1000 * 60 * 60 * 24));
-                      const pricePerNight = { 'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200 }[selectedBooking.roomType] ?? 0;
+                      const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
                       const extraCost = extraNights * pricePerNight;
                       return (
                         <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-[#0f141c] rounded-lg border-2 border-amber-300 dark:border-amber-700">
@@ -1559,39 +1687,10 @@ export default function BookingManagement({
                       );
                     })()}
 
-                    {/* Payment mode for extension */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Payment Mode
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(['Cash', 'GCash'] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => { setExtendPaymentMode(mode); setExtendReferenceNumber(''); }}
-                            className={`py-2 rounded-lg text-xs font-bold border transition-all ${
-                              extendPaymentMode === mode
-                                ? mode === 'GCash'
-                                  ? 'bg-blue-500 border-blue-500 text-white'
-                                  : 'bg-emerald-500 border-emerald-500 text-white'
-                                : 'bg-white dark:bg-[#0f141c] border-slate-300 dark:border-slate-600 text-gray-500 dark:text-gray-400'
-                            }`}
-                          >
-                            {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
-                          </button>
-                        ))}
-                      </div>
-                      {extendPaymentMode === 'GCash' && (
-                        <input
-                          type="text"
-                          placeholder="GCash Reference Number *"
-                          value={extendReferenceNumber}
-                          onChange={(e) => setExtendReferenceNumber(e.target.value)}
-                          className="w-full px-3 py-2 text-xs bg-white dark:bg-[#0f141c] border-2 border-blue-400 dark:border-blue-700 focus:outline-none focus:border-blue-500 rounded-lg text-gray-800 dark:text-gray-200 font-mono mt-1"
-                        />
-                      )}
-                    </div>
+                    {/* Payment mode note — collected in confirmation step */}
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold text-center">
+                      Payment mode and reference number will be confirmed in the next step.
+                    </p>
 
                     {/* Confirm / Cancel extend */}
                     <div className="grid grid-cols-2 gap-2">
@@ -1605,19 +1704,13 @@ export default function BookingManagement({
                             alert('Please enter the GCash Reference Number.');
                             return;
                           }
-                          const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / (1000 * 60 * 60 * 24));
-                          const pricePerNight = { 'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200 }[selectedBooking.roomType] ?? 0;
-                          const extraCost = extraNights * pricePerNight;
-                          onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber);
-                          setShowExtend(false);
-                          setExtendCheckOut('');
-                          setExtendPaymentMode('Cash');
-                          setExtendReferenceNumber('');
-                          setSelectedBooking(null);
+                          // Open confirmation modal (penalty = 0 for normal extend, non-zero if from overstay)
+                          setPendingOverstayPenaltyForExtend(0);
+                          setShowExtendConfirm(true);
                         }}
                         className="py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors"
                       >
-                        Confirm Extend
+                        Review & Confirm
                       </button>
                       <button
                         onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
@@ -1654,12 +1747,23 @@ export default function BookingManagement({
                     </button>
                   </div>
                 )}
-                {selectedBooking.status === 'Checked-in' && !showExtend && (
+                {selectedBooking.status === 'Checked-in' && !showExtend && !showEarlyCheckout && !showOverstayCheckout && (
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => {
-                        onUpdateBookingStatus(selectedBooking.id, 'Checked-out');
-                        setSelectedBooking(null);
+                        const today = new Date().toISOString().split('T')[0];
+                        const scheduledOut = selectedBooking.checkOutDate;
+                        if (today < scheduledOut) {
+                          // Guest leaving before scheduled date → early checkout (refund)
+                          setShowEarlyCheckout(true);
+                        } else if (today > scheduledOut) {
+                          // Guest stayed past scheduled date → overstay (penalty)
+                          setShowOverstayCheckout(true);
+                        } else {
+                          // Exactly on time
+                          onUpdateBookingStatus(selectedBooking.id, 'Checked-out');
+                          setSelectedBooking(null);
+                        }
                       }}
                       className="py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
                     >
@@ -1678,8 +1782,235 @@ export default function BookingManagement({
                     </button>
                   </div>
                 )}
+
+                {/* Early Check-Out Confirmation Panel */}
+                {selectedBooking.status === 'Checked-in' && showEarlyCheckout && (() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const checkedInDate = selectedBooking.checkInDate;
+                  const scheduledOut  = selectedBooking.checkOutDate;
+                  const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+
+                  const bookedNights  = Math.max(1, Math.round(
+                    (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const usedNights    = Math.max(1, Math.round(
+                    (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const unusedNights  = Math.max(0, bookedNights - usedNights);
+                  const refundAmount  = unusedNights * pricePerNight;
+
+                  return (
+                    <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-xl border-2 border-rose-300 dark:border-rose-700 space-y-3">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Early Check-Out
+                        </p>
+                        <button
+                          onClick={() => setShowEarlyCheckout(false)}
+                          className="text-rose-400 hover:text-rose-600 dark:hover:text-rose-300"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Breakdown rows */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Booked duration</span>
+                          <span className="font-bold">{bookedNights} night{bookedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Days used</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{usedNights} night{usedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Unused days</span>
+                          <span className="font-bold text-rose-600 dark:text-rose-400">{unusedNights} night{unusedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1.5 border-t border-rose-200 dark:border-rose-800">
+                          <span className="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                            <RotateCcw className="w-3 h-3" /> Refund Amount
+                          </span>
+                          <span className="text-base font-black font-mono text-rose-600 dark:text-rose-400">
+                            {refundAmount > 0 ? `₱${refundAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '₱0.00'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {refundAmount === 0 && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+                          No refund — guest already used all paid nights.
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          onClick={() => setShowEarlyCheckout(false)}
+                          className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            onEarlyCheckout(selectedBooking.id, today, refundAmount);
+                            setShowEarlyCheckout(false);
+                            setSelectedBooking(null);
+                          }}
+                          className="py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <LogOut className="w-3 h-3" />
+                          Confirm Check-Out
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Overstay Check-Out Confirmation Panel */}
+                {selectedBooking.status === 'Checked-in' && showOverstayCheckout && (() => {
+                  const today           = new Date().toISOString().split('T')[0];
+                  const checkedInDate   = selectedBooking.checkInDate;
+                  const scheduledOut    = selectedBooking.checkOutDate;
+                  const pricePerNight   = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+
+                  const bookedNights    = Math.max(1, Math.round(
+                    (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const actualNights    = Math.max(1, Math.round(
+                    (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const overstayDays    = Math.max(0, actualNights - bookedNights);
+                  const penaltyAmount   = overstayDays * pricePerNight;
+
+                  return (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-xl border-2 border-orange-400 dark:border-orange-600 space-y-3">
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Overstay Detected
+                        </p>
+                        <button
+                          onClick={() => setShowOverstayCheckout(false)}
+                          className="text-orange-400 hover:text-orange-600 dark:hover:text-orange-300"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Warning banner */}
+                      <div className="flex items-start gap-2 px-3 py-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg border border-orange-300 dark:border-orange-700">
+                        <AlertTriangle className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-orange-700 dark:text-orange-300 font-semibold leading-snug">
+                          Guest stayed beyond the scheduled check-out date of <span className="font-black">{scheduledOut}</span>.
+                          An overstay penalty applies.
+                        </p>
+                      </div>
+
+                      {/* Breakdown rows */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Scheduled check-out</span>
+                          <span className="font-bold font-mono">{scheduledOut}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual check-out</span>
+                          <span className="font-bold font-mono text-orange-600 dark:text-orange-400">{today}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Booked nights</span>
+                          <span className="font-bold">{bookedNights} night{bookedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual nights stayed</span>
+                          <span className="font-bold text-orange-600 dark:text-orange-400">{actualNights} night{actualNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Nightly rate</span>
+                          <span className="font-bold font-mono">₱{pricePerNight.toLocaleString()}</span>
+                        </div>
+
+                        {/* Overstay penalty — highlighted danger row */}
+                        <div className="flex justify-between items-center px-2 py-1.5 bg-rose-50 dark:bg-rose-950/30 rounded-lg border border-rose-300 dark:border-rose-700">
+                          <span className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                            <AlertTriangle className="w-3 h-3" />
+                            Overstay Days
+                          </span>
+                          <span className="font-black text-rose-600 dark:text-rose-400">
+                            {overstayDays} day{overstayDays !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        {/* Penalty amount */}
+                        <div className="flex items-center justify-between pt-1.5 border-t-2 border-orange-300 dark:border-orange-700">
+                          <div>
+                            <span className="font-black text-orange-700 dark:text-orange-300 text-xs uppercase tracking-wide flex items-center gap-1.5">
+                              <AlertTriangle className="w-3 h-3" />
+                              Penalty Amount
+                            </span>
+                            <p className="text-[10px] text-orange-500 dark:text-orange-400 font-normal mt-0.5">
+                              {overstayDays} day{overstayDays !== 1 ? 's' : ''} × ₱{pricePerNight.toLocaleString()} / night
+                            </p>
+                          </div>
+                          <span className="text-xl font-black font-mono text-rose-600 dark:text-rose-400">
+                            ₱{penaltyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+
+                        {/* Updated total due */}
+                        <div className="flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800/60 rounded-lg border border-slate-300 dark:border-slate-600">
+                          <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Updated Total Due</span>
+                          <span className="text-sm font-black font-mono text-gray-900 dark:text-white">
+                            ₱{(selectedBooking.price + penaltyAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          onClick={() => setShowOverstayCheckout(false)}
+                          className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            onOverstayCheckout(selectedBooking.id, today, overstayDays, penaltyAmount);
+                            setShowOverstayCheckout(false);
+                            setSelectedBooking(null);
+                          }}
+                          className="py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <LogOut className="w-3 h-3" />
+                          Confirm & Charge ₱{penaltyAmount.toLocaleString()}
+                        </button>
+                      </div>
+
+                      {/* ── Extend Stay from overstay — guest wants to officially extend ── */}
+                      <div className="pt-1 border-t border-orange-200 dark:border-orange-800">
+                        <p className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold text-center mb-2">
+                          Guest wants to stay longer instead?
+                        </p>
+                        <button
+                          onClick={() => {
+                            // Pre-fill new check-out from today as the new baseline
+                            setExtendCheckOut(today);
+                            setPendingOverstayPenaltyForExtend(penaltyAmount);
+                            setShowOverstayCheckout(false);
+                            setShowExtend(true);
+                          }}
+                          className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <CalendarPlus className="w-3.5 h-3.5" />
+                          Extend Stay Instead (incl. ₱{penaltyAmount.toLocaleString()} overstay charge)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <button
-                  onClick={() => { setSelectedBooking(null); setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                  onClick={() => { setSelectedBooking(null); setShowExtend(false); setShowEarlyCheckout(false); setShowOverstayCheckout(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
                   className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700"
                 >
                   Close
@@ -1689,6 +2020,205 @@ export default function BookingManagement({
           </div>
         )}
       </AnimatePresence>
+      {/* EXTEND STAY CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showExtendConfirm && selectedBooking && (() => {
+          const pricePerNight   = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+          const extraNights     = Math.round(
+            (new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          const extensionCost   = extraNights * pricePerNight;
+          const overstayPenalty = pendingOverstayPenaltyForExtend;
+          const totalCharge     = extensionCost + overstayPenalty;
+
+          return (
+            <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                onClick={() => setShowExtendConfirm(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+                className="relative w-full sm:max-w-md bg-white dark:bg-[#121822] sm:rounded-2xl rounded-t-2xl shadow-2xl border-2 border-amber-300 dark:border-amber-600 overflow-hidden"
+              >
+                {/* Accent top bar */}
+                <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+
+                {/* Header */}
+                <div className="px-5 pt-5 pb-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center">
+                      <CalendarPlus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-gray-900 dark:text-white tracking-wide">Confirm Extension</h3>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Review all charges before processing</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowExtendConfirm(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="p-5 space-y-4">
+
+                  {/* Guest + room info strip */}
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 ring-2 ring-cyan-200 dark:ring-cyan-800 flex items-center justify-center font-black text-xs shrink-0">
+                      {selectedBooking.guestName.split(' ').slice(0, 2).map((n) => n[0]).join('')}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{selectedBooking.guestName}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Room {selectedBooking.roomNumber} · {selectedBooking.roomType}</p>
+                    </div>
+                    {getStatusBadge(selectedBooking.status)}
+                  </div>
+
+                  {/* Extension Information section */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Extension Information</p>
+
+                    <div className="bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-700 overflow-hidden">
+                      {/* Dates */}
+                      <div className="grid grid-cols-2 divide-x divide-amber-200 dark:divide-amber-700 border-b border-amber-200 dark:border-amber-700">
+                        <div className="p-3">
+                          <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">Previous Check-out</p>
+                          <p className="text-sm font-black text-gray-800 dark:text-gray-100 font-mono">{selectedBooking.checkOutDate}</p>
+                        </div>
+                        <div className="p-3">
+                          <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">New Check-out</p>
+                          <p className="text-sm font-black text-amber-600 dark:text-amber-400 font-mono">{extendCheckOut}</p>
+                        </div>
+                      </div>
+
+                      {/* Extension days + rate */}
+                      <div className="p-3 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-600 dark:text-gray-300 font-medium">Extension Days</span>
+                          <span className="font-black text-amber-700 dark:text-amber-300">+{extraNights} day{extraNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-gray-600 dark:text-gray-300 font-medium">Nightly Rate</span>
+                          <span className="font-bold font-mono text-gray-800 dark:text-gray-200">₱{pricePerNight.toLocaleString()}/night</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pt-1 border-t border-amber-200 dark:border-amber-700">
+                          <span className="font-bold text-gray-700 dark:text-gray-200">Extension Cost</span>
+                          <span className="font-black font-mono text-amber-600 dark:text-amber-300">+₱{extensionCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overstay penalty row — only when coming from overstay context */}
+                    {overstayPenalty > 0 && (
+                      <div className="flex items-center justify-between px-3 py-2.5 bg-orange-50 dark:bg-orange-950/20 rounded-xl border-2 border-orange-300 dark:border-orange-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-orange-700 dark:text-orange-400">Existing Overstay Penalty</p>
+                            <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium">Collected together with extension payment</p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-black font-mono text-orange-600 dark:text-orange-400 shrink-0 ml-2">
+                          +₱{overstayPenalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Total additional charges */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-md shadow-amber-500/20">
+                      <div>
+                        <p className="text-[10px] font-black text-white/80 uppercase tracking-wider">Total Additional Charges</p>
+                        {overstayPenalty > 0 && (
+                          <p className="text-[10px] text-white/60 font-medium mt-0.5">
+                            Extension ₱{extensionCost.toLocaleString()} + Overstay ₱{overstayPenalty.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-2xl font-black font-mono text-white tracking-tight">
+                        ₱{totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment mode */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Payment Mode</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['Cash', 'GCash'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => { setExtendPaymentMode(mode); setExtendReferenceNumber(''); }}
+                          className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                            extendPaymentMode === mode
+                              ? mode === 'GCash'
+                                ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/25'
+                                : 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/25'
+                              : 'bg-white dark:bg-[#0f141c] border-slate-300 dark:border-slate-600 text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          {mode === 'GCash' ? '📱 GCash' : '💵 Cash'}
+                        </button>
+                      ))}
+                    </div>
+                    {extendPaymentMode === 'GCash' && (
+                      <input
+                        type="text"
+                        placeholder="GCash Reference Number *"
+                        value={extendReferenceNumber}
+                        onChange={(e) => setExtendReferenceNumber(e.target.value)}
+                        className="w-full px-3 py-2.5 text-xs bg-white dark:bg-[#0f141c] border-2 border-blue-400 dark:border-blue-700 focus:outline-none focus:border-blue-500 rounded-xl text-gray-800 dark:text-gray-200 font-mono"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 pb-5 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setShowExtendConfirm(false)}
+                    className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (extendPaymentMode === 'GCash' && !extendReferenceNumber.trim()) {
+                        alert('Please enter the GCash Reference Number.');
+                        return;
+                      }
+                      onExtendBooking(
+                        selectedBooking.id,
+                        extendCheckOut,
+                        extensionCost,
+                        extendPaymentMode,
+                        extendReferenceNumber,
+                        overstayPenalty > 0 ? overstayPenalty : undefined,
+                      );
+                      setShowExtendConfirm(false);
+                      setShowExtend(false);
+                      setShowOverstayCheckout(false);
+                      setExtendCheckOut('');
+                      setExtendPaymentMode('Cash');
+                      setExtendReferenceNumber('');
+                      setPendingOverstayPenaltyForExtend(0);
+                      setSelectedBooking(null);
+                    }}
+                    className="py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-500/30 flex items-center justify-center gap-1.5"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5" />
+                    Confirm Extension
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
+
       {/* LIGHTBOX — Full screen ID image viewer */}
       <AnimatePresence>
         {lightboxUrl && (
