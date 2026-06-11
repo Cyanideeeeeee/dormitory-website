@@ -551,12 +551,7 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
                 </div>
 
                 {/* More stats row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <StatCard
-                    label="Pending"
-                    value={summary.pending}
-                    color="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50"
-                  />
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
                   <StatCard
                     label="Early Check-Outs"
                     value={summary.earlyCheckouts}
@@ -566,11 +561,6 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
                     label="Extended Stays"
                     value={summary.extendedStays}
                     color="bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800/50"
-                  />
-                  <StatCard
-                    label="Occupancy Rate"
-                    value={`${summary.occupancyRate}%`}
-                    color="bg-cyan-50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/50"
                   />
                 </div>
 
@@ -599,7 +589,6 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
               </div>
               <div className="space-y-1.5">
                 {[
-                  { label: 'Booking Revenue',    value: summary.bookingRevenue,     color: 'text-gray-800 dark:text-gray-100',  prefix: '' },
                   { label: 'Overstay Penalties', value: summary.overstayRevenue,    color: 'text-orange-600 dark:text-orange-400', prefix: '+' },
                   { label: 'Refund Deductions',  value: -summary.refundDeductions,  color: 'text-rose-600 dark:text-rose-400',    prefix: '' },
                 ].map((row) => (
