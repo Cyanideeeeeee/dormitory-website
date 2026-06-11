@@ -328,10 +328,10 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
   const StatCard = ({
     label, value, sub, color,
   }: { label: string; value: string | number; sub?: string; color: string }) => (
-    <div className={`p-4 rounded-2xl border-2 ${color} space-y-1`}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">{label}</p>
-      <p className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">{value}</p>
-      {sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{sub}</p>}
+    <div className={`p-3 sm:p-4 rounded-2xl border-2 ${color} space-y-1 min-w-0 overflow-hidden`}>
+      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 leading-tight">{label}</p>
+      <p className="text-base sm:text-xl font-black tracking-tight text-gray-900 dark:text-white break-all leading-tight">{value}</p>
+      {sub && <p className="text-[9px] sm:text-[10px] text-gray-400 dark:text-gray-500 font-medium">{sub}</p>}
     </div>
   );
 
@@ -508,7 +508,7 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
               <div className="space-y-4">
 
                 {/* Revenue cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <StatCard
                     label="Net Revenue"
                     value={fmtCurrency(summary.netRevenue)}
@@ -566,12 +566,12 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
 
                 {/* Refund deduction row */}
                 {summary.refundDeductions > 0 && (
-                  <div className="flex items-center justify-between p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 p-3 bg-rose-50 dark:bg-rose-950/20 rounded-xl border border-rose-200 dark:border-rose-800/50">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                       <p className="text-xs font-bold text-rose-700 dark:text-rose-400">Total Refunds Deducted</p>
                     </div>
-                    <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                    <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400 pl-5 sm:pl-0">
                       − {fmtCurrency(summary.refundDeductions)}
                     </span>
                   </div>
@@ -592,7 +592,7 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
                   { label: 'Overstay Penalties', value: summary.overstayRevenue,    color: 'text-orange-600 dark:text-orange-400', prefix: '+' },
                   { label: 'Refund Deductions',  value: -summary.refundDeductions,  color: 'text-rose-600 dark:text-rose-400',    prefix: '' },
                 ].map((row) => (
-                  <div key={row.label} className="flex justify-between items-center px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/30 text-xs">
+                  <div key={row.label} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-0.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/30 text-xs">
                     <span className="text-gray-600 dark:text-gray-300 font-medium">{row.label}</span>
                     <span className={`font-black font-mono ${row.color}`}>
                       {row.prefix}{fmtCurrency(Math.abs(row.value))}
