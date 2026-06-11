@@ -17,36 +17,25 @@ import {
   ArrowRightLeft,
   Coins,
   Bed,
-  CheckCircle,
-  HelpCircle,
   TrendingUp,
   SlidersHorizontal,
-  Users,
   BarChart2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookingRecord, RoomRecord, DayBookingStat, RoomType } from '../types';
+import { BookingRecord, RoomRecord, RoomType } from '../types';
 import LoadingSpinner from './UI/LoadingSpinner';
 
 interface DashboardViewProps {
   bookings: BookingRecord[];
   rooms: RoomRecord[];
-  bookingStats: DayBookingStat[];
   isDark?: boolean;
 }
 
 export default function DashboardView({
   bookings,
   rooms,
-  bookingStats,
   isDark = false,
 }: DashboardViewProps) {
-  // ✅ FIX 3: Chart colors that respond to dark mode
-  const chartGrid   = isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0';
-  const chartAxis   = isDark ? '#cbd5e1' : '#888888';
-  const tooltipBg   = isDark ? '#1a2333' : '#ffffff';
-  const tooltipBorder = isDark ? '#2d3f55' : '#e2e8f0';
-  const tooltipText = isDark ? '#e2e8f0' : '#1e293b';
   // Filtering state
   const [roomCategoryFilter, setRoomCategoryFilter] = useState<'All' | RoomType>('All');
   const [localLoading, setLocalLoading] = useState(false);
@@ -469,7 +458,10 @@ export default function DashboardView({
                           paddingBlock: '2px',
                         }}
                         cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }}
-                        formatter={(value: number, name: string) => [`${value} check-in${value !== 1 ? 's' : ''}`, name]}
+                        formatter={(value, name) => {
+                          const count = typeof value === 'number' ? value : Number(value);
+                          return [`${count} check-in${count !== 1 ? 's' : ''}`, name as string];
+                        }}
                       />
                       <Legend wrapperStyle={{ display: 'none' }} />
                       {roomTypes.map((rt) => (
@@ -602,10 +594,13 @@ export default function DashboardView({
                         fontWeight: 600,
                         paddingBlock: '2px',
                       }}
-                      formatter={(value: number) => [
-                        `${value} check-in${value !== 1 ? 's' : ''}`,
-                        'Bookings',
-                      ]}
+                      formatter={(value) => {
+                        const count = typeof value === 'number' ? value : Number(value);
+                        return [
+                          `${count} check-in${count !== 1 ? 's' : ''}`,
+                          'Bookings',
+                        ];
+                      }}
                     />
                     <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={48}>
                       {monthlyBookingData.map((entry, index) => (
@@ -748,10 +743,13 @@ export default function DashboardView({
                         fontWeight: 600,
                         paddingBlock: '2px',
                       }}
-                      formatter={(value: number) => [
-                        `₱${(value as number).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-                        'Revenue',
-                      ]}
+                      formatter={(value) => {
+                        const num = typeof value === 'number' ? value : Number(value);
+                        return [
+                          `₱${num.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+                          'Revenue',
+                        ];
+                      }}
                     />
                     <Bar
                       dataKey="revenue"

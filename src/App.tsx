@@ -721,7 +721,6 @@ export default function App() {
               <DashboardView
                 bookings={bookings}
                 rooms={rooms}
-                bookingStats={bookingStats}
                 isDark={isDark}
               />
             )}
