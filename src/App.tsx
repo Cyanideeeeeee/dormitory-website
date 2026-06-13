@@ -741,6 +741,8 @@ export default function App() {
                 bookings={bookings}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
                 onExtendBooking={handleExtendBooking}
+                onEarlyCheckout={handleEarlyCheckout}
+                onOverstayCheckout={handleOverstayCheckout}
               />
             )}
             {activeTab === 'admin' && (

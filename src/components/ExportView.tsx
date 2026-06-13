@@ -6,7 +6,6 @@ import {
   Calendar,
   TrendingUp,
   Users,
-  BedDouble,
   CheckCircle2,
   AlertTriangle,
   BarChart3,
@@ -197,89 +196,81 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
       ];
       addSheet('Revenue Report', revenueRows, [revenueRows.length - 1]);
 
-      // ── Sheet 2: Booking Statistics ───────────────────────────────────────
+      // ── Sheet 2: Booking Statistics (raw data) ────────────────────────────
       const monthBookings = bookings.filter((b) => getMonthKey(b.createdAt) === monthKey);
 
+      // Price breakdown helper — returns a readable string of each charge component
+      const buildPriceBreakdown = (b: BookingRecord): string => {
+        const parts: string[] = [];
+        const nights = Math.max(1, Math.round(
+          (new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / 86400000,
+        ));
+        const deposit        = b.keyDeposit       ?? 0;
+        const discount       = b.discountAmount   ?? 0;
+        const refund         = b.refundAmount      ?? 0;
+        const overstayPenalty = b.overstayPenalty ?? 0;
+        const extensionCost  = b.extensionCost    ?? 0;
+
+        parts.push(`${nights} night${nights !== 1 ? 's' : ''} x ₱${((b.price - deposit + discount - overstayPenalty - extensionCost) / nights).toFixed(0)}/night`);
+        if (deposit > 0)        parts.push(`Key Deposit: ₱${deposit.toLocaleString()}`);
+        if (discount > 0)       parts.push(`Discount: -₱${discount.toLocaleString()}`);
+        if (overstayPenalty > 0) parts.push(`Overstay Penalty: +₱${overstayPenalty.toLocaleString()}`);
+        if (extensionCost > 0)  parts.push(`Extension: +₱${extensionCost.toLocaleString()}`);
+        if (refund > 0)         parts.push(`Refund: -₱${refund.toLocaleString()}`);
+        return parts.join(' | ');
+      };
+
+      // Format time helper — converts HH:MM to 12-hour format, or derives from ISO timestamp
+      const fmtTime = (timeStr?: string | null, isoTimestamp?: string | null): string => {
+        const raw = timeStr ?? (isoTimestamp
+          ? (() => { const d = new Date(isoTimestamp); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; })()
+          : null);
+        if (!raw) return '—';
+        const [h, m] = raw.split(':').map(Number);
+        return `${String(h % 12 || 12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+      };
+
       const bookingStatsRows: (string | number | null)[][] = [
-        [`Monthly Booking Statistics — ${monthName} ${selectedYear}`, null],
-        [],
-        ['Statistic', 'Count'],
-        ['Total Bookings',      summary.totalBookings],
-        ['Checked-In Guests',   summary.checkedIn],
-        ['Checked-Out Guests',  summary.checkedOut],
-        ['Pending',             summary.pending],
-        ['Cancelled',           summary.cancelled],
-        ['Early Check-Outs',    summary.earlyCheckouts],
-        ['Extended Stays',      summary.extendedStays],
-        ['Overstay Cases',      summary.overstayCases],
-        [],
-        ['Booking ID', 'Guest Name', 'Room No.', 'Room Type', 'Check-In', 'Check-Out', 'Status', 'Payment Mode', 'Price (₱)'],
+        // Header row — all 15 columns
+        [
+          'Booking ID',
+          'Guest Name',
+          'Border Email Address',
+          'Contact Number',
+          'Room Type',
+          'Room No.',
+          'Check-In Date',
+          'Check-Out Date',
+          'Check-In Time',
+          'Check-Out Time',
+          'Status',
+          'Payment Mode',
+          'Reference No.',
+          'Booking Price (Breakdown)',
+          'Total',
+        ],
+        // Data rows — one row per booking, no summary block
         ...monthBookings.map((b) => [
           b.id,
           b.guestName,
-          b.roomNumber,
+          b.email || '—',
+          b.contactNumber || '—',
           b.roomType,
+          b.roomNumber,
           b.checkInDate,
           b.checkOutDate,
+          fmtTime(b.checkInTime, b.checkedInAt),
+          fmtTime(b.checkOutTime, b.checkedOutAt),
           b.status,
           b.paymentMode ?? 'Cash',
+          b.paymentMode === 'GCash' && b.referenceNumber ? b.referenceNumber : '-',
+          buildPriceBreakdown(b),
           b.price,
         ]),
       ];
       addSheet('Booking Statistics', bookingStatsRows);
 
-      // ── Sheet 3: Room Statistics ──────────────────────────────────────────
-      type RoomStat = { totalBookings: number; occupiedDays: number; roomName: string; roomType: string; totalSlots: number };
-      const roomStats: Record<string, RoomStat> = {};
-
-      rooms.forEach((r) => {
-        roomStats[r.name] = {
-          roomName: r.name,
-          roomType: r.type,
-          totalSlots: r.totalRooms,
-          totalBookings: 0,
-          occupiedDays: 0,
-        };
-      });
-
-      bookings
-        .filter((b) => getMonthKey(b.createdAt) === monthKey)
-        .forEach((b) => {
-          const key = b.roomNumber;
-          if (!roomStats[key]) {
-            roomStats[key] = { roomName: key, roomType: b.roomType, totalSlots: 1, totalBookings: 0, occupiedDays: 0 };
-          }
-          roomStats[key].totalBookings += 1;
-          const nights = Math.max(0, Math.round(
-            (new Date(b.checkOutDate).getTime() - new Date(b.checkInDate).getTime()) / 86400000,
-          ));
-          roomStats[key].occupiedDays += nights;
-        });
-
-      const sortedRooms = Object.values(roomStats).sort((a, b) => b.totalBookings - a.totalBookings);
-      const mostBooked  = sortedRooms[0];
-      const leastBooked = sortedRooms[sortedRooms.length - 1];
-
-      const roomStatRows: (string | number | null)[][] = [
-        [`Monthly Room Statistics — ${monthName} ${selectedYear}`, null, null, null, null],
-        [],
-        ['Room Number', 'Room Type', 'Total Bookings', 'Occupied Days', `Available Days (of ${totalDays})`],
-        ...sortedRooms.map((r) => [
-          r.roomName,
-          r.roomType,
-          r.totalBookings,
-          r.occupiedDays,
-          Math.max(0, totalDays - r.occupiedDays),
-        ]),
-        [],
-        ['Summary Metric', 'Value'],
-        ['Occupancy Rate',    `${summary.occupancyRate}%`],
-        ['Most Booked Room',  mostBooked  ? `${mostBooked.roomName}  (${mostBooked.totalBookings} bookings)`  : '—'],
-        ['Least Booked Room', leastBooked ? `${leastBooked.roomName} (${leastBooked.totalBookings} bookings)` : '—'],
-      ];
-      addSheet('Room Statistics', roomStatRows);
-
-      // ── Sheet 4: Financial Summary ────────────────────────────────────────
+      // ── Sheet 3: Financial Summary ────────────────────────────────────────
       const extensionRevenue = bookings
         .filter((b) => getMonthKey(b.createdAt) === monthKey)
         .reduce((s, b) => s + (b.overstayPenalty ?? 0), 0);
@@ -414,10 +405,9 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
           <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 space-y-3">
             <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">Included Worksheets</p>
             {[
-              { num: '1', label: 'Revenue Report',      sub: 'Daily revenue breakdown',      color: 'text-emerald-500' },
-              { num: '2', label: 'Booking Statistics',  sub: 'Counts + full booking list',   color: 'text-cyan-500'    },
-              { num: '3', label: 'Room Statistics',     sub: 'Per-room occupancy data',      color: 'text-violet-500'  },
-              { num: '4', label: 'Financial Summary',   sub: 'Net revenue + categories',     color: 'text-amber-500'   },
+              { num: '1', label: 'Revenue Report',     sub: 'Daily revenue breakdown',    color: 'text-emerald-500' },
+              { num: '2', label: 'Booking Statistics', sub: 'Full raw booking data list', color: 'text-cyan-500'    },
+              { num: '3', label: 'Financial Summary',  sub: 'Net revenue + categories',   color: 'text-amber-500'   },
             ].map((s) => (
               <div key={s.num} className="flex items-center gap-3">
                 <span className={`w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center bg-slate-100 dark:bg-slate-800 ${s.color}`}>
@@ -603,38 +593,6 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
                   <span className="text-white font-black text-xs uppercase tracking-wider">Net Revenue</span>
                   <span className="text-white font-black font-mono text-base">{fmtCurrency(summary.netRevenue)}</span>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Room breakdown preview */}
-          {hasData && (
-            <div className="bg-white dark:bg-[#151c27] rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <BedDouble className="w-4 h-4 text-violet-500" />
-                <p className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest">Room Type Breakdown</p>
-              </div>
-              <div className="space-y-2">
-                {(['Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((rt) => {
-                  const count = bookings.filter(
-                    (b) => b.roomType === rt && getMonthKey(b.createdAt) === monthKey,
-                  ).length;
-                  const pct = summary.totalBookings > 0 ? Math.round((count / summary.totalBookings) * 100) : 0;
-                  return (
-                    <div key={rt}>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-bold text-gray-700 dark:text-gray-300">{rt}</span>
-                        <span className="font-black text-gray-900 dark:text-white">{count} <span className="text-gray-400 dark:text-gray-500 font-normal">({pct}%)</span></span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-cyan-500 to-violet-500 rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           )}

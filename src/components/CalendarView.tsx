@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Users, AlertTriangle, Eye, X, User, Mail, Hash, Bed, CreditCard, CheckCircle2, XCircle, LogOut, CalendarPlus, ZoomIn, ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Users, AlertTriangle, Eye, X, User, Mail, Hash, Bed, CreditCard, CheckCircle2, XCircle, LogOut, CalendarPlus, ZoomIn, ImageIcon, RotateCcw, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus } from '../types';
 
@@ -7,6 +7,8 @@ interface CalendarViewProps {
   bookings: BookingRecord[];
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
   onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
+  onEarlyCheckout: (id: string, actualCheckOutDate: string, refundAmount: number) => void;
+  onOverstayCheckout: (id: string, overstayDays: number, penaltyAmount: number) => void;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -26,6 +28,16 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
+// Returns today's date in YYYY-MM-DD using LOCAL time (not UTC) —
+// avoids off-by-one-day bugs near midnight in UTC+8.
+function getLocalTodayStr(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function isOverdue(booking: BookingRecord): boolean {
   if (booking.status !== 'Checked-in') return false;
   const checkOutDay = booking.checkOutDate;
@@ -36,7 +48,7 @@ function isOverdue(booking: BookingRecord): boolean {
   return new Date() >= dueAt;
 }
 
-export default function CalendarView({ bookings, onUpdateBookingStatus, onExtendBooking }: CalendarViewProps) {
+export default function CalendarView({ bookings, onUpdateBookingStatus, onExtendBooking, onEarlyCheckout, onOverstayCheckout }: CalendarViewProps) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -47,6 +59,9 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
   const [extendPaymentMode, setExtendPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
   const [extendReferenceNumber, setExtendReferenceNumber] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
+  const [showOverstayCheckout, setShowOverstayCheckout] = useState(false);
+  const [pendingOverstayPenaltyForExtend, setPendingOverstayPenaltyForExtend] = useState(0);
 
   const KEY_DEPOSIT = 200;
   const ROOM_PRICES: Record<string, number> = {
@@ -385,7 +400,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
               </div>
 
               {/* Body */}
-              <div className="p-5 space-y-3.5 overflow-y-auto flex-1">
+              <div className="p-5 space-y-3.5 overflow-y-auto flex-1 min-h-0">
 
                 {/* Booking ID + Status */}
                 <div className="flex items-center justify-between">
@@ -489,6 +504,61 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                     </div>
                   </div>
 
+                  {/* ── Live Overstay Alert — shown when guest is still Checked-in past their check-out date ── */}
+                  {(() => {
+                    if (selectedBooking.status !== 'Checked-in') return null;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const due = new Date(selectedBooking.checkOutDate);
+                    due.setHours(0, 0, 0, 0);
+                    const overstayDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+                    if (overstayDays <= 0) return null;
+                    const nightlyRate = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                    const livePenalty = overstayDays * nightlyRate;
+                    return (
+                      <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-xl border-2 border-orange-400 dark:border-orange-600 space-y-2.5">
+                        {/* Alert header */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center shrink-0 shadow-sm shadow-orange-500/40">
+                            <AlertTriangle className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-orange-700 dark:text-orange-400 uppercase tracking-wider">
+                              Active Overstay Detected
+                            </p>
+                            <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium">
+                              Guest was due to check out on {selectedBooking.checkOutDate}
+                            </p>
+                          </div>
+                          <span className="ml-auto shrink-0 px-2.5 py-1 bg-orange-500 text-white text-xs font-black rounded-lg shadow shadow-orange-500/30">
+                            +{overstayDays} day{overstayDays !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        {/* Breakdown row */}
+                        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-orange-200 dark:border-orange-700/50">
+                          <div className="text-center p-2 bg-white dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-700/50">
+                            <p className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider mb-0.5">Overstay Days</p>
+                            <p className="text-lg font-black text-orange-600 dark:text-orange-300 leading-none">{overstayDays}</p>
+                            <p className="text-[9px] text-orange-400 dark:text-orange-500 font-medium mt-0.5">day{overstayDays !== 1 ? 's' : ''}</p>
+                          </div>
+                          <div className="text-center p-2 bg-white dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-700/50">
+                            <p className="text-[9px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider mb-0.5">Nightly Rate</p>
+                            <p className="text-sm font-black text-orange-600 dark:text-orange-300 leading-none font-mono">₱{nightlyRate.toLocaleString()}</p>
+                            <p className="text-[9px] text-orange-400 dark:text-orange-500 font-medium mt-0.5">per night</p>
+                          </div>
+                          <div className="text-center p-2 bg-orange-500 dark:bg-orange-600 rounded-lg shadow-sm shadow-orange-500/30">
+                            <p className="text-[9px] font-bold text-white/80 uppercase tracking-wider mb-0.5">Penalty Due</p>
+                            <p className="text-sm font-black text-white leading-none font-mono">₱{livePenalty.toLocaleString()}</p>
+                            <p className="text-[9px] text-white/70 font-medium mt-0.5">accruing</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-orange-500 dark:text-orange-400 font-medium text-center">
+                          Use <span className="font-black">Check-Out</span> in the footer to collect the penalty and close this booking.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Price breakdown */}
                   <div className="p-3.5 bg-gradient-to-br from-cyan-50 to-sky-50 dark:from-cyan-950/20 dark:to-sky-950/10 rounded-xl border-2 border-cyan-300 dark:border-cyan-700 space-y-2.5">
                     <div className="flex items-center justify-between">
@@ -535,13 +605,71 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                           </span>
                         </div>
                       )}
+
+                      {/* Early checkout refund row */}
+                      {(selectedBooking.refundAmount ?? 0) > 0 && (
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-rose-50 dark:bg-rose-950/20 rounded-lg border border-rose-200 dark:border-rose-800/50">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <RotateCcw className="w-3 h-3 text-rose-700 dark:text-rose-400 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-rose-700 dark:text-rose-400 font-bold leading-tight">
+                                Early Check-Out Refund
+                              </p>
+                              {selectedBooking.actualCheckOutDate && (
+                                <p className="text-[10px] font-normal text-rose-500 dark:text-rose-400 leading-tight">
+                                  checked out {selectedBooking.actualCheckOutDate}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400 shrink-0 ml-2">
+                            − ₱{(selectedBooking.refundAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Overstay penalty row */}
+                      {(selectedBooking.overstayDays ?? 0) > 0 && (() => {
+                        const days = selectedBooking.overstayDays ?? 0;
+                        const penalty = selectedBooking.overstayPenalty ?? 0;
+                        const rate = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+                        return (
+                          <div className="flex items-center justify-between px-2 py-1.5 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-300 dark:border-orange-700">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <AlertTriangle className="w-3 h-3 text-orange-600 dark:text-orange-400 shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs text-orange-700 dark:text-orange-400 font-bold leading-tight">
+                                  Overstay Penalty
+                                </p>
+                                <p className="text-[10px] font-normal text-orange-500 dark:text-orange-400 leading-tight">
+                                  {days} day{days !== 1 ? 's' : ''} × ₱{rate.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-sm font-black font-mono text-orange-600 dark:text-orange-400 shrink-0 ml-2">
+                              + ₱{penalty.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
-                    <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700/60 pt-2.5">
-                      <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total</span>
-                      <span className="text-xl font-black font-mono text-cyan-600 dark:text-cyan-400">
-                        ₱{selectedBooking.price.toLocaleString(undefined,{minimumFractionDigits:2})}
-                      </span>
-                    </div>
+                    {(() => {
+                      const keyDep  = selectedBooking.keyDeposit ?? KEY_DEPOSIT;
+                      const refund  = selectedBooking.refundAmount ?? 0;
+                      const penalty = selectedBooking.overstayPenalty ?? 0;
+                      const totalRevenue = selectedBooking.price - keyDep - refund + penalty;
+                      return (
+                        <div className="flex items-center justify-between border-t-2 border-cyan-300 dark:border-cyan-700/60 pt-2.5">
+                          <div>
+                            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wider">Total Revenue</span>
+                            <p className="text-[9px] text-gray-400 dark:text-gray-500 font-medium mt-0.5">Excludes refundable key deposit</p>
+                          </div>
+                          <span className="text-xl font-black font-mono text-cyan-600 dark:text-cyan-400">
+                            ₱{totalRevenue.toLocaleString(undefined,{minimumFractionDigits:2})}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* GCash ref */}
@@ -579,9 +707,9 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
               </div>
 
               {/* Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-[#0e141d] space-y-2.5">
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-[#0e141d] space-y-2.5 overflow-y-auto max-h-[60vh] shrink-0">
                 {/* Extend Stay form */}
-                {selectedBooking.status === 'Checked-in' && showExtend && (
+                {selectedBooking.status === 'Checked-in' && showExtend && !showEarlyCheckout && !showOverstayCheckout && (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-xl border border-amber-200 dark:border-amber-800/60 space-y-3 mb-1">
                     <p className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                       <CalendarPlus className="w-3.5 h-3.5" />Extend Stay
@@ -592,13 +720,21 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                         onChange={(e) => setExtendCheckOut(e.target.value)}
                         className={inputCls + " border-amber-200 dark:border-amber-800/60 focus:ring-amber-500"} />
                     </div>
+                    {pendingOverstayPenaltyForExtend > 0 && (
+                      <div className="flex items-center justify-between px-3 py-2 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-300 dark:border-orange-700">
+                        <span className="text-xs text-orange-700 dark:text-orange-400 font-bold flex items-center gap-1.5">
+                          <AlertTriangle className="w-3 h-3" />Overstay charge
+                        </span>
+                        <span className="text-sm font-black font-mono text-orange-600 dark:text-orange-400">+₱{pendingOverstayPenaltyForExtend.toLocaleString()}</span>
+                      </div>
+                    )}
                     {extendCheckOut && extendCheckOut > selectedBooking.checkOutDate && (() => {
                       const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / 86400000);
                       const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
-                      const extraCost = extraNights * pricePerNight;
+                      const extraCost = extraNights * pricePerNight + pendingOverstayPenaltyForExtend;
                       return (
                         <div className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#0f141c] rounded-lg border border-amber-200 dark:border-amber-900/40 shadow-sm">
-                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">+{extraNights} night{extraNights!==1?'s':''} × ₱{pricePerNight.toLocaleString()}</span>
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">+{extraNights} night{extraNights!==1?'s':''} × ₱{pricePerNight.toLocaleString()}{pendingOverstayPenaltyForExtend > 0 ? ' + overstay' : ''}</span>
                           <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-300">+₱{extraCost.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
                         </div>
                       );
@@ -629,13 +765,13 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                         if (!extendCheckOut || extendCheckOut <= selectedBooking.checkOutDate) { alert('Please select a new check-out date after the current one.'); return; }
                         if (extendPaymentMode==='GCash' && !extendReferenceNumber.trim()) { alert('Please enter the GCash Reference Number.'); return; }
                         const extraNights = Math.round((new Date(extendCheckOut).getTime()-new Date(selectedBooking.checkOutDate).getTime())/86400000);
-                        const extraCost = extraNights * (ROOM_PRICES[selectedBooking.roomType]??0);
+                        const extraCost = extraNights * (ROOM_PRICES[selectedBooking.roomType]??0) + pendingOverstayPenaltyForExtend;
                         onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber);
-                        setShowExtend(false); setExtendCheckOut(''); setExtendPaymentMode('Cash'); setExtendReferenceNumber(''); setSelectedBooking(null);
+                        setShowExtend(false); setExtendCheckOut(''); setExtendPaymentMode('Cash'); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); setSelectedBooking(null);
                       }} className="py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm shadow-amber-500/20">
                         Confirm Extend
                       </button>
-                      <button onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                      <button onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); }}
                         className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
                         Cancel
                       </button>
@@ -658,9 +794,20 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                 )}
 
                 {/* Checked-in actions */}
-                {selectedBooking.status === 'Checked-in' && !showExtend && (
+                {selectedBooking.status === 'Checked-in' && !showExtend && !showEarlyCheckout && !showOverstayCheckout && (
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => { onUpdateBookingStatus(selectedBooking.id,'Checked-out'); setSelectedBooking(null); }}
+                    <button onClick={() => {
+                        const today = getLocalTodayStr();
+                        const scheduledOut = selectedBooking.checkOutDate;
+                        if (today < scheduledOut) {
+                          setShowEarlyCheckout(true);
+                        } else if (today > scheduledOut) {
+                          setShowOverstayCheckout(true);
+                        } else {
+                          onUpdateBookingStatus(selectedBooking.id,'Checked-out');
+                          setSelectedBooking(null);
+                        }
+                      }}
                       className="py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm shadow-cyan-500/20 flex items-center justify-center gap-1.5">
                       <LogOut className="w-3.5 h-3.5" />Check-Out
                     </button>
@@ -671,7 +818,195 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                   </div>
                 )}
 
-                <button onClick={() => { setSelectedBooking(null); setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); }}
+                {/* ── EARLY CHECK-OUT CONFIRMATION PANEL ───────────────── */}
+                {selectedBooking.status === 'Checked-in' && showEarlyCheckout && (() => {
+                  const today = getLocalTodayStr();
+                  const scheduledOut = selectedBooking.checkOutDate;
+                  const checkedInDate = selectedBooking.checkInDate;
+                  const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+
+                  const bookedNights = Math.max(1, Math.round(
+                    (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const actualNights = Math.max(1, Math.round(
+                    (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const unusedNights = Math.max(0, bookedNights - actualNights);
+                  const refundAmount = unusedNights * pricePerNight;
+
+                  return (
+                    <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-xl border-2 border-rose-300 dark:border-rose-700 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                          <RotateCcw className="w-3.5 h-3.5" />Early Check-Out
+                        </p>
+                        <button onClick={() => setShowEarlyCheckout(false)} className="text-rose-400 hover:text-rose-600 dark:hover:text-rose-300">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Scheduled check-out</span>
+                          <span className="font-bold font-mono">{scheduledOut}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual check-out</span>
+                          <span className="font-bold font-mono text-rose-600 dark:text-rose-400">{today}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Booked nights</span>
+                          <span className="font-bold">{bookedNights} night{bookedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual nights stayed</span>
+                          <span className="font-bold text-rose-600 dark:text-rose-400">{actualNights} night{actualNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Unused night{unusedNights !== 1 ? 's' : ''}</span>
+                          <span className="font-bold text-rose-700 dark:text-rose-400">{unusedNights} night{unusedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1.5 border-t border-rose-200 dark:border-rose-800">
+                          <span className="font-bold text-rose-700 dark:text-rose-300">Refund ({unusedNights} × ₱{pricePerNight.toLocaleString()})</span>
+                          <span className="text-base font-black font-mono text-rose-600 dark:text-rose-400">
+                            − ₱{refundAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {unusedNights === 0 && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+                          No refund — guest stayed for the full booked period.
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button onClick={() => setShowEarlyCheckout(false)}
+                          className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700">
+                          Cancel
+                        </button>
+                        <button onClick={() => {
+                            onEarlyCheckout(selectedBooking.id, today, refundAmount);
+                            setShowEarlyCheckout(false);
+                            setSelectedBooking(null);
+                          }}
+                          className="py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                          <LogOut className="w-3 h-3" />Confirm & Check-Out
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── OVERSTAY CHECK-OUT CONFIRMATION PANEL ────────────── */}
+                {selectedBooking.status === 'Checked-in' && showOverstayCheckout && (() => {
+                  const today = getLocalTodayStr();
+                  const checkedInDate = selectedBooking.checkInDate;
+                  const scheduledOut = selectedBooking.checkOutDate;
+                  const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
+
+                  const bookedNights = Math.max(1, Math.round(
+                    (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const actualNights = Math.max(1, Math.round(
+                    (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
+                  ));
+                  const overstayDays = Math.max(0, actualNights - bookedNights);
+                  const penaltyAmount = overstayDays * pricePerNight;
+
+                  return (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-xl border-2 border-orange-400 dark:border-orange-600 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" />Overstay Detected
+                        </p>
+                        <button onClick={() => setShowOverstayCheckout(false)} className="text-orange-400 hover:text-orange-600 dark:hover:text-orange-300">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-start gap-2 px-2.5 py-2 bg-orange-100 dark:bg-orange-950/40 rounded-lg border border-orange-300 dark:border-orange-700">
+                        <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-orange-700 dark:text-orange-300 font-semibold leading-relaxed">
+                          Guest stayed beyond the scheduled check-out date. An additional charge applies for the extra day(s).
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Scheduled check-out</span>
+                          <span className="font-bold font-mono">{scheduledOut}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual check-out</span>
+                          <span className="font-bold font-mono text-orange-600 dark:text-orange-400">{today}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Booked nights</span>
+                          <span className="font-bold">{bookedNights} night{bookedNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Actual nights stayed</span>
+                          <span className="font-bold text-orange-600 dark:text-orange-400">{actualNights} night{actualNights !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600 dark:text-gray-300">
+                          <span>Overstay day{overstayDays !== 1 ? 's' : ''}</span>
+                          <span className="font-bold text-orange-700 dark:text-orange-400">{overstayDays} day{overstayDays !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1.5 border-t border-orange-200 dark:border-orange-800">
+                          <span className="font-bold text-orange-700 dark:text-orange-300 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />Penalty ({overstayDays} × ₱{pricePerNight.toLocaleString()})
+                          </span>
+                          <span className="text-base font-black font-mono text-orange-600 dark:text-orange-400">
+                            + ₱{penaltyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {overstayDays === 0 && (
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+                          No extra charge — overstay days could not be calculated.
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button onClick={() => setShowOverstayCheckout(false)}
+                          className="py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700">
+                          Cancel
+                        </button>
+                        <button onClick={() => {
+                            onOverstayCheckout(selectedBooking.id, overstayDays, penaltyAmount);
+                            setShowOverstayCheckout(false);
+                            setSelectedBooking(null);
+                          }}
+                          className="py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
+                          <LogOut className="w-3 h-3" />Confirm & Charge
+                        </button>
+                      </div>
+
+                      {/* ── Extend Stay from overstay — guest wants to officially extend ── */}
+                      <div className="pt-1 border-t border-orange-200 dark:border-orange-800">
+                        <p className="text-[10px] text-orange-600 dark:text-orange-400 font-semibold text-center mb-2">
+                          Guest wants to stay longer instead?
+                        </p>
+                        <button
+                          onClick={() => {
+                            setExtendCheckOut(today);
+                            setPendingOverstayPenaltyForExtend(penaltyAmount);
+                            setShowOverstayCheckout(false);
+                            setShowExtend(true);
+                          }}
+                          className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <CalendarPlus className="w-3.5 h-3.5" />
+                          Extend Stay Instead (incl. ₱{penaltyAmount.toLocaleString()} overstay charge)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <button onClick={() => { setSelectedBooking(null); setShowExtend(false); setShowEarlyCheckout(false); setShowOverstayCheckout(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); }}
                   className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
                   Close
                 </button>
