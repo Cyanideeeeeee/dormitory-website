@@ -99,6 +99,9 @@ export default function App() {
   const fetchAllData = async () => {
     setDataLoading(true);
     await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats(), fetchSettings(), fetchCurrentProfile(), fetchAdminAccounts()]);
+    // Resync occupied_rooms counter from actual bookings to fix any drift
+    await resyncRoomOccupancy();
+    await fetchRooms();
     setDataLoading(false);
   };
 
@@ -567,6 +570,35 @@ export default function App() {
       .from('rooms')
       .update({ occupied_rooms: newOccupied, available_rooms: newAvailable })
       .eq('id', room.id);
+  };
+
+  // ── Resync room occupancy from actual bookings ───────────────
+  // Counts active (Pending + Checked-in) bookings per room type
+  // and writes the correct occupied_rooms / available_rooms values
+  // to fix any counter drift caused by failed decrements etc.
+  const resyncRoomOccupancy = async () => {
+    const [{ data: bookingRows }, { data: roomRows }] = await Promise.all([
+      supabase.from('bookings').select('room_type, status'),
+      supabase.from('rooms').select('id, type, total_rooms, occupied_rooms, available_rooms'),
+    ]);
+    if (!bookingRows || !roomRows) return;
+
+    for (const room of roomRows) {
+      const activeCount = bookingRows.filter(
+        (b: any) =>
+          b.room_type === room.type &&
+          (b.status === 'Pending' || b.status === 'Checked-in')
+      ).length;
+      const newOccupied  = Math.min(activeCount, room.total_rooms);
+      const newAvailable = Math.max(0, room.total_rooms - newOccupied);
+
+      if (newOccupied !== room.occupied_rooms || newAvailable !== room.available_rooms) {
+        await supabase
+          .from('rooms')
+          .update({ occupied_rooms: newOccupied, available_rooms: newAvailable })
+          .eq('id', room.id);
+      }
+    }
   };
 
   // ── Booking stats helper ─────────────────────────────────────
