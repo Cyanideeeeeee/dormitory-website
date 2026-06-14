@@ -8,7 +8,7 @@ interface CalendarViewProps {
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
   onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
   onEarlyCheckout: (id: string, actualCheckOutDate: string, refundAmount: number) => void;
-  onOverstayCheckout: (id: string, overstayDays: number, penaltyAmount: number) => void;
+  onOverstayCheckout: (id: string, actualCheckOutDate: string, overstayDays: number, penaltyAmount: number) => void;
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -975,7 +975,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                           Cancel
                         </button>
                         <button onClick={() => {
-                            onOverstayCheckout(selectedBooking.id, overstayDays, penaltyAmount);
+                            onOverstayCheckout(selectedBooking.id, today, overstayDays, penaltyAmount);
                             setShowOverstayCheckout(false);
                             setSelectedBooking(null);
                           }}
