@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Force redirect the Netlify subdomain to the custom domain
+[[redirects]]
+  from = "https://akseafarers.netlify.app/*"
+  to = "https://akseafarers.com/:splat"
+  status = 301
+  force = true
+
+# SPA fallback — keeps React Router / client-side routing working
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
