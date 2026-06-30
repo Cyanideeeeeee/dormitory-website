@@ -14,6 +14,18 @@ import LoadingSpinner from './components/UI/LoadingSpinner';
 
 const DARK_MODE_KEY = 'seafarers_admin_dm';
 
+// ── Timezone-safe date/time helpers (Philippines, UTC+8) ───────
+// new Date().toISOString() is UTC. At 8 PM PH time it already returns
+// tomorrow's date, causing Today's Revenue / Check-in / Check-out to
+// reset 8 hours early and miscount. These helpers always use the
+// browser's LOCAL timezone instead.
+const getLocalDateStr = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD local
+const getLocalISOStr = () => {
+  const now = new Date();
+  const tzOffsetMs = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - tzOffsetMs).toISOString().slice(0, -1); // local ISO, no trailing Z
+};
+
 export default function App() {
   // ── Data state ───────────────────────────────────────────────
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
@@ -346,8 +358,8 @@ export default function App() {
       price: newBooking.price,
       discount_amount: newBooking.discountAmount ?? 0,
       key_deposit: (newBooking as any).keyDeposit ?? 0,
-      checked_in_at: newBooking.status === 'Checked-in' ? (newBooking.checkedInAt ?? new Date().toISOString()) : null,
-      created_at: new Date().toISOString(),
+      checked_in_at: newBooking.status === 'Checked-in' ? (newBooking.checkedInAt ?? getLocalISOStr()) : null,
+      created_at: getLocalISOStr(),
       id_image_url: idImageUrl,
     });
 
@@ -365,7 +377,7 @@ export default function App() {
 
   // ── Update booking status → Supabase ────────────────────────
   const handleUpdateBookingStatus = async (id: string, status: BookingStatus) => {
-    const nowISO = new Date().toISOString();
+    const nowISO = getLocalISOStr();
 
     const updatePayload: any = { status };
     if (status === 'Checked-in') {
@@ -444,7 +456,7 @@ export default function App() {
       const bookedNights  = Math.max(1, Math.round(
         (new Date(scheduledOut).getTime() - new Date(checkedInDate).getTime()) / 86400000
       ));
-      const today         = new Date().toISOString().split('T')[0];
+      const today         = getLocalDateStr();
       const actualNights  = Math.max(1, Math.round(
         (new Date(today).getTime() - new Date(checkedInDate).getTime()) / 86400000
       ));
@@ -479,7 +491,7 @@ export default function App() {
   // Sets status to Checked-out, records the actual check-out date,
   // and stores the refund amount so revenue analytics deduct it automatically.
   const handleEarlyCheckout = async (id: string, actualCheckOutDate: string, refundAmount: number) => {
-    const nowISO = new Date().toISOString();
+    const nowISO = getLocalISOStr();
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
 
@@ -521,7 +533,7 @@ export default function App() {
     overstayDays: number,
     overstayPenalty: number,
   ) => {
-    const nowISO  = new Date().toISOString();
+    const nowISO  = getLocalISOStr();
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
 
@@ -644,7 +656,7 @@ export default function App() {
       full_name: fullName,
       email: generatedEmail,
       role: 'admin',
-      created_at: new Date().toISOString(),
+      created_at: getLocalISOStr(),
     });
 
     if (profileError) return { error: profileError.message };

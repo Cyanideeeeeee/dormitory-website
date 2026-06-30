@@ -242,6 +242,17 @@ export default function BookingManagement({
       return;
     }
 
+    // Final safety net: reject past check-in dates and invalid check-out dates
+    // in case the date inputs ended up holding a stale/typed value.
+    if (checkIn < todayStr()) {
+      alert('Check-in date cannot be in the past.');
+      return;
+    }
+    if (checkOut <= checkIn) {
+      alert('Check-out date must be after the check-in date.');
+      return;
+    }
+
     const fullName = [firstName.trim(), middleName.trim(), lastName.trim()].filter(Boolean).join(' ');
 
     // Use override price if provided, otherwise use auto-computed price
@@ -869,7 +880,12 @@ export default function BookingManagement({
                         min={todayStr()}
                         value={checkIn}
                         onChange={(e) => {
-                          const newCheckIn = e.target.value;
+                          let newCheckIn = e.target.value;
+                          // Guard against past dates being typed directly into the field
+                          // (the `min` attribute only blocks the calendar picker, not manual typing)
+                          if (newCheckIn && newCheckIn < todayStr()) {
+                            newCheckIn = todayStr();
+                          }
                           setCheckIn(newCheckIn);
                           const minOut = new Date(newCheckIn);
                           minOut.setDate(minOut.getDate() + 1);
@@ -928,7 +944,17 @@ export default function BookingManagement({
                         type="date"
                         min={(() => { const d = new Date(checkIn); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()}
                         value={checkOut}
-                        onChange={(e) => setCheckOut(e.target.value)}
+                        onChange={(e) => {
+                          let newCheckOut = e.target.value;
+                          // Guard against the same manual-typing bypass on check-out
+                          const minOut = new Date(checkIn);
+                          minOut.setDate(minOut.getDate() + 1);
+                          const minOutStr = minOut.toISOString().split('T')[0];
+                          if (newCheckOut && newCheckOut < minOutStr) {
+                            newCheckOut = minOutStr;
+                          }
+                          setCheckOut(newCheckOut);
+                        }}
                         className="w-full px-3 py-2.5 text-xs bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-800 dark:text-gray-200 rounded-xl outline-none focus:border-cyan-500 dark:focus:border-cyan-400"
                       />
                       {/* Time picker */}

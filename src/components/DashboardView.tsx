@@ -39,7 +39,8 @@ export default function DashboardView({
   // Filtering state
   const [roomCategoryFilter, setRoomCategoryFilter] = useState<'All' | RoomType>('All');
   const [localLoading, setLocalLoading] = useState(false);
-  const [todayDate, setTodayDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const getLocalDateStr = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD in LOCAL (PH) timezone, not UTC
+  const [todayDate, setTodayDate] = useState(() => getLocalDateStr());
 
   // Year filters — each chart has its own independent year selector (2026–2050)
   const currentYear = new Date().getFullYear();
@@ -50,17 +51,14 @@ export default function DashboardView({
   const [bookingStatsYear, setBookingStatsYear] = useState(Math.max(START_YEAR, Math.min(END_YEAR, currentYear)));
   const [revenueYear, setRevenueYear] = useState(Math.max(START_YEAR, Math.min(END_YEAR, currentYear)));
 
-  // Refresh todayDate at midnight so stats reset automatically each day
+  // Refresh todayDate at LOCAL midnight (PH time, UTC+8) — not UTC midnight
   useEffect(() => {
-    const msUntilMidnight = () => {
-      const now = new Date();
-      const midnight = new Date(now);
-      midnight.setHours(24, 0, 0, 0);
-      return midnight.getTime() - now.getTime();
-    };
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+    const msUntilMidnight = midnight.getTime() - now.getTime();
     const timer = setTimeout(() => {
-      setTodayDate(new Date().toISOString().split('T')[0]);
-    }, msUntilMidnight());
+      setTodayDate(getLocalDateStr());
+    }, msUntilMidnight);
     return () => clearTimeout(timer);
   }, [todayDate]);
 
@@ -91,7 +89,7 @@ export default function DashboardView({
 
   // TODAY'S CHECK-OUT — bookings where admin clicked Check-Out today
   const todayCheckoutsCount = filteredBookings.filter(
-    (b) => b.status === 'Checked-out' && (b as any).checkedOutAt?.slice(0, 10) === todayDate
+    (b) => b.status === 'Checked-out' && b.checkedOutAt?.slice(0, 10) === todayDate
   ).length;
 
   // TODAY'S REVENUE —
