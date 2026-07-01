@@ -6,7 +6,7 @@ import { BookingRecord, BookingStatus } from '../types';
 interface CalendarViewProps {
   bookings: BookingRecord[];
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
-  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string) => void;
+  onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string, overstayPenalty?: number, extendDiscount?: number) => void;
   onEarlyCheckout: (id: string, actualCheckOutDate: string, refundAmount: number) => void;
   onOverstayCheckout: (id: string, actualCheckOutDate: string, overstayDays: number, penaltyAmount: number) => void;
 }
@@ -58,6 +58,8 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
   const [extendCheckOut, setExtendCheckOut] = useState('');
   const [extendPaymentMode, setExtendPaymentMode] = useState<'Cash' | 'GCash'>('Cash');
   const [extendReferenceNumber, setExtendReferenceNumber] = useState('');
+  const [hasExtendDiscount, setHasExtendDiscount] = useState(false);
+  const [extendDiscountAmount, setExtendDiscountAmount] = useState('');
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [showEarlyCheckout, setShowEarlyCheckout] = useState(false);
   const [showOverstayCheckout, setShowOverstayCheckout] = useState(false);
@@ -731,14 +733,41 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                     {extendCheckOut && extendCheckOut > selectedBooking.checkOutDate && (() => {
                       const extraNights = Math.round((new Date(extendCheckOut).getTime() - new Date(selectedBooking.checkOutDate).getTime()) / 86400000);
                       const pricePerNight = ROOM_PRICES[selectedBooking.roomType] ?? 0;
-                      const extraCost = extraNights * pricePerNight + pendingOverstayPenaltyForExtend;
+                      const extensionCost = extraNights * pricePerNight;
+                      const extendDiscount = hasExtendDiscount ? Math.min(parseFloat(extendDiscountAmount) || 0, extensionCost) : 0;
+                      const extraCost = Math.max(0, extensionCost - extendDiscount) + pendingOverstayPenaltyForExtend;
                       return (
                         <div className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[#0f141c] rounded-lg border border-amber-200 dark:border-amber-900/40 shadow-sm">
-                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">+{extraNights} night{extraNights!==1?'s':''} × ₱{pricePerNight.toLocaleString()}{pendingOverstayPenaltyForExtend > 0 ? ' + overstay' : ''}</span>
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold">+{extraNights} night{extraNights!==1?'s':''} × ₱{pricePerNight.toLocaleString()}{pendingOverstayPenaltyForExtend > 0 ? ' + overstay' : ''}{extendDiscount > 0 ? ' − discount' : ''}</span>
                           <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-300">+₱{extraCost.toLocaleString(undefined,{minimumFractionDigits:2})}</span>
                         </div>
                       );
                     })()}
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={hasExtendDiscount}
+                          onChange={(e) => { setHasExtendDiscount(e.target.checked); if (!e.target.checked) setExtendDiscountAmount(''); }}
+                          className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-600 accent-amber-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Apply Discount</span>
+                      </label>
+                      {hasExtendDiscount && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 shrink-0">₱</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="Enter discount amount"
+                            value={extendDiscountAmount}
+                            onChange={(e) => setExtendDiscountAmount(e.target.value.replace(/[^0-9]/g, ''))}
+                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                            className={inputCls + " border-amber-200 dark:border-amber-800/60 focus:ring-amber-500 font-mono"}
+                          />
+                        </div>
+                      )}
+                    </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Payment Mode</label>
                       <div className="grid grid-cols-2 gap-2">
@@ -765,13 +794,15 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                         if (!extendCheckOut || extendCheckOut <= selectedBooking.checkOutDate) { alert('Please select a new check-out date after the current one.'); return; }
                         if (extendPaymentMode==='GCash' && !extendReferenceNumber.trim()) { alert('Please enter the GCash Reference Number.'); return; }
                         const extraNights = Math.round((new Date(extendCheckOut).getTime()-new Date(selectedBooking.checkOutDate).getTime())/86400000);
-                        const extraCost = extraNights * (ROOM_PRICES[selectedBooking.roomType]??0) + pendingOverstayPenaltyForExtend;
-                        onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber);
-                        setShowExtend(false); setExtendCheckOut(''); setExtendPaymentMode('Cash'); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); setSelectedBooking(null);
+                        const extensionCost = extraNights * (ROOM_PRICES[selectedBooking.roomType]??0);
+                        const extendDiscount = hasExtendDiscount ? Math.min(parseFloat(extendDiscountAmount) || 0, extensionCost) : 0;
+                        const extraCost = Math.max(0, extensionCost - extendDiscount) + pendingOverstayPenaltyForExtend;
+                        onExtendBooking(selectedBooking.id, extendCheckOut, extraCost, extendPaymentMode, extendReferenceNumber, undefined, extendDiscount > 0 ? extendDiscount : undefined);
+                        setShowExtend(false); setExtendCheckOut(''); setExtendPaymentMode('Cash'); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); setHasExtendDiscount(false); setExtendDiscountAmount(''); setSelectedBooking(null);
                       }} className="py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm shadow-amber-500/20">
                         Confirm Extend
                       </button>
-                      <button onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); }}
+                      <button onClick={() => { setShowExtend(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); setHasExtendDiscount(false); setExtendDiscountAmount(''); }}
                         className="py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
                         Cancel
                       </button>
@@ -1006,7 +1037,7 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
                   );
                 })()}
 
-                <button onClick={() => { setSelectedBooking(null); setShowExtend(false); setShowEarlyCheckout(false); setShowOverstayCheckout(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); }}
+                <button onClick={() => { setSelectedBooking(null); setShowExtend(false); setShowEarlyCheckout(false); setShowOverstayCheckout(false); setExtendCheckOut(''); setExtendReferenceNumber(''); setPendingOverstayPenaltyForExtend(0); setHasExtendDiscount(false); setExtendDiscountAmount(''); }}
                   className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors">
                   Close
                 </button>

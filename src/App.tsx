@@ -108,6 +108,25 @@ export default function App() {
     }
   }, [sessionStatus]);
 
+  // ── Realtime subscription — bookings table ───────────────────
+  // Listens for INSERT, UPDATE, and DELETE on the bookings table so the
+  // dashboard and booking list stay in sync when changes are made directly
+  // in Supabase (e.g. deleting a row via the Supabase dashboard).
+  useEffect(() => {
+    if (sessionStatus !== 'logged_in') return;
+
+    const channel = supabase
+      .channel('bookings-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => { fetchAllData(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionStatus]);
+
   const fetchAllData = async () => {
     setDataLoading(true);
     await Promise.all([fetchBookings(), fetchRooms(), fetchBookingStats(), fetchSettings(), fetchCurrentProfile(), fetchAdminAccounts()]);
@@ -436,6 +455,7 @@ export default function App() {
     extendPaymentMode: 'Cash' | 'GCash',
     extendReferenceNumber: string,
     overstayPenalty: number = 0,
+    extendDiscount: number = 0,
   ) => {
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
@@ -448,6 +468,12 @@ export default function App() {
       payment_mode: extendPaymentMode,
       reference_number: extendPaymentMode === 'GCash' ? extendReferenceNumber : (booking.referenceNumber || null),
     };
+
+    // Accumulate any discount applied during this extension onto the running total,
+    // so it's reflected alongside the original booking discount (if any).
+    if (extendDiscount > 0) {
+      updatePayload.discount_amount = (booking.discountAmount ?? 0) + extendDiscount;
+    }
 
     // If there was an overstay involved, record it on the booking record
     if (overstayPenalty > 0) {
@@ -564,6 +590,66 @@ export default function App() {
     if (deposit > 0) await updateTodayStats(-deposit, false);
 
     // Add the overstay penalty to today's revenue
+    if (overstayPenalty > 0) await updateTodayStats(overstayPenalty, false);
+
+    await fetchAllData();
+    playAlertSound();
+  };
+
+  // ── Manual check-out → Supabase ──────────────────────────────
+  // Retroactive check-out: admin enters the actual date+time the guest left.
+  // Revenue stays as-is (already collected); we just close the booking record
+  // and optionally add an overstay penalty if the actual date was past scheduled.
+  const handleManualCheckout = async (
+    id: string,
+    actualCheckOutDate: string,
+    actualCheckOutTime: string,
+    overstayDays: number,
+    overstayPenalty: number,
+  ) => {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+
+    // Build checked_out_at from admin-entered date + time (not real clock time),
+    // so the Check-Out Time in Booking Details reflects what the admin entered.
+    const tzOffsetMs = new Date().getTimezoneOffset() * 60000;
+    const adminEnteredISO = new Date(
+      new Date(`${actualCheckOutDate}T${actualCheckOutTime}:00`).getTime() - tzOffsetMs
+    ).toISOString().slice(0, -1);
+
+    const updatePayload: any = {
+      status: 'Checked-out',
+      checked_out_at: adminEnteredISO,
+      check_out_date: actualCheckOutDate,
+      actual_check_out_date: actualCheckOutDate,
+      check_out_time: actualCheckOutTime,
+    };
+
+    if (overstayDays > 0) {
+      updatePayload.overstay_days    = overstayDays;
+      updatePayload.overstay_penalty = overstayPenalty;
+      if (overstayPenalty > 0) {
+        updatePayload.price = booking.price + overstayPenalty;
+      }
+    }
+
+    const { error } = await supabase
+      .from('bookings')
+      .update(updatePayload)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error processing manual checkout:', error.message);
+      alert('Failed to process manual check-out. Please try again.');
+      return;
+    }
+
+    // Free the room slot
+    await updateRoomOccupancy(booking.roomType, 'decrement');
+
+    // Deduct key deposit (refunded to guest) and credit any overstay penalty
+    const deposit = booking.keyDeposit ?? 0;
+    if (deposit > 0)       await updateTodayStats(-deposit, false);
     if (overstayPenalty > 0) await updateTodayStats(overstayPenalty, false);
 
     await fetchAllData();
@@ -778,6 +864,7 @@ export default function App() {
                 onExtendBooking={handleExtendBooking}
                 onEarlyCheckout={handleEarlyCheckout}
                 onOverstayCheckout={handleOverstayCheckout}
+                onManualCheckout={handleManualCheckout}
               />
             )}
             {activeTab === 'calendar' && (
