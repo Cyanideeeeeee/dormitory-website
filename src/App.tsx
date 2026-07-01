@@ -714,7 +714,7 @@ export default function App() {
         .from('booking_stats')
         .update({
           bookings: data.bookings + (countBooking ? 1 : 0),
-          revenue: data.revenue + revenue,
+          revenue: Math.max(0, data.revenue + revenue),
         })
         .eq('date', today);
     } else {
@@ -874,6 +874,7 @@ export default function App() {
                 onExtendBooking={handleExtendBooking}
                 onEarlyCheckout={handleEarlyCheckout}
                 onOverstayCheckout={handleOverstayCheckout}
+                onManualCheckout={handleManualCheckout}
               />
             )}
             {activeTab === 'admin' && (

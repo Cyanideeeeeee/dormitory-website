@@ -102,7 +102,7 @@ export default function DashboardView({
       (b) => (b.status === 'Checked-in' || b.status === 'Checked-out') &&
               b.checkedInAt?.slice(0, 10) === todayDate
     );
-    const income = checkedInToday.reduce((sum, b) => sum + b.price - (b.keyDeposit ?? 0) - (b.refundAmount ?? 0), 0);
+    const income = checkedInToday.reduce((sum, b) => sum + Math.max(0, b.price - (b.keyDeposit ?? 0) - (b.refundAmount ?? 0)), 0);
 
     // Bookings checked OUT today that were checked in on a PRIOR day:
     // their price was already counted on that prior day, so we only need to subtract the deposit refund
@@ -113,7 +113,7 @@ export default function DashboardView({
     );
     const refunds = checkedOutTodayPrior.reduce((sum, b) => sum + (b.keyDeposit ?? 0) + (b.refundAmount ?? 0), 0);
 
-    return income - refunds;
+    return Math.max(0, income - refunds);
   })();
 
   // Room Availability — deduct for Pending (reserved) AND Checked-in (occupied)

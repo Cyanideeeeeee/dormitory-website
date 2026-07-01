@@ -107,7 +107,7 @@ export default function BookingManagement({
     setShowOverstayCheckout(false);
     setShowManualCheckout(false);
     setManualCheckOutDate('');
-    setManualCheckOutTime('12:00');
+    setManualCheckOutTime('');
     setManualOverstayPenalty('');
     setShowExtendConfirm(false);
     setPendingOverstayPenaltyForExtend(0);
@@ -1851,7 +1851,7 @@ export default function BookingManagement({
                       <button
                         onClick={() => {
                           setManualCheckOutDate(selectedBooking.checkOutDate);
-                          setManualCheckOutTime('12:00');
+                          setManualCheckOutTime(selectedBooking.checkOutTime ?? '12:00');
                           setManualOverstayPenalty('');
                           setShowManualCheckout(true);
                         }}
@@ -2140,16 +2140,13 @@ export default function BookingManagement({
                         <div>
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
                             Actual Check-Out Date
+                            <span className="ml-1.5 text-[9px] text-slate-400 dark:text-slate-500 normal-case tracking-normal font-normal">(auto-filled · not editable)</span>
                           </label>
                           <input
                             type="date"
                             value={manualCheckOutDate}
-                            max={new Date().toISOString().split('T')[0]}
-                            onChange={(e) => {
-                              setManualCheckOutDate(e.target.value);
-                              setManualOverstayPenalty(''); // reset override when date changes
-                            }}
-                            className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-slate-500 rounded-lg text-slate-700 dark:text-slate-200 font-mono"
+                            readOnly
+                            className="w-full px-3 py-2 text-xs bg-slate-100 dark:bg-slate-700/50 border-2 border-slate-200 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 font-mono cursor-not-allowed select-none opacity-80"
                           />
                         </div>
                         <div>
