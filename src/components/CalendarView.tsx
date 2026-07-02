@@ -260,7 +260,7 @@ export default function CalendarView({ bookings, settings, onUpdateBookingStatus
 
         {/* CALENDAR TABLE */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ minWidth: 560 }}>
+          <table className="w-full border-collapse" style={{ minWidth: 560, tableLayout: 'fixed' }}>
             <thead>
               <tr className="bg-slate-50/80 dark:bg-slate-900/40">
                 {DAY_LABELS.map((d, i) => (
