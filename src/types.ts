@@ -21,7 +21,7 @@ export interface UserRoleRecord {
   permissions: string[];
 }
 
-export type RoomType = 'Bed space' | 'Solo room' | 'Couple room' | 'Family room';
+export type RoomType = 'Bed space' | 'Solo room (1 pax)' | 'Solo room (2 pax)' | 'Couple room (1 pax)' | 'Couple room (2 pax)' | 'Family room';
 
 export interface RoomRecord {
   id: string;

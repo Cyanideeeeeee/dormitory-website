@@ -32,10 +32,12 @@ export default function App() {
   const [rooms, setRooms] = useState<RoomRecord[]>([]);
   const [bookingStats, setBookingStats] = useState<DayBookingStat[]>([]);
   const [settings, setSettings] = useState<PriceSettings>({
-    price_bed_space:   250,
-    price_solo_room:   525,
-    price_couple_room: 725,
-    price_family_room: 950,
+    price_bed_space:        250,
+    price_solo_room_1pax:   550,
+    price_solo_room_2pax:   650,
+    price_couple_room_1pax: 750,
+    price_couple_room_2pax: 850,
+    price_family_room:      950,
     key_deposit:       200,
   });
 
@@ -281,10 +283,12 @@ export default function App() {
     (data || []).forEach((row: any) => { map[row.key] = parseFloat(row.value); });
 
     setSettings({
-      price_bed_space:   map['price_bed_space']   ?? 250,
-      price_solo_room:   map['price_solo_room']   ?? 525,
-      price_couple_room: map['price_couple_room'] ?? 725,
-      price_family_room: map['price_family_room'] ?? 950,
+      price_bed_space:        map['price_bed_space']        ?? 250,
+      price_solo_room_1pax:   map['price_solo_room_1pax']   ?? 550,
+      price_solo_room_2pax:   map['price_solo_room_2pax']   ?? 650,
+      price_couple_room_1pax: map['price_couple_room_1pax'] ?? 750,
+      price_couple_room_2pax: map['price_couple_room_2pax'] ?? 850,
+      price_family_room:      map['price_family_room']      ?? 950,
       key_deposit:       map['key_deposit']       ?? 200,
     });
   };
@@ -870,6 +874,7 @@ export default function App() {
             {activeTab === 'calendar' && (
               <CalendarView
                 bookings={bookings}
+                settings={settings}
                 onUpdateBookingStatus={handleUpdateBookingStatus}
                 onExtendBooking={handleExtendBooking}
                 onEarlyCheckout={handleEarlyCheckout}

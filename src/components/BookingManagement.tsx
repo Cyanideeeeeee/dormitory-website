@@ -221,10 +221,12 @@ export default function BookingManagement({
 
   // Prices from Admin settings — live from Supabase
   const ROOM_PRICES: Record<string, number> = {
-    'Bed space':   settings.price_bed_space,
-    'Solo room':   settings.price_solo_room,
-    'Couple room': settings.price_couple_room,
-    'Family room': settings.price_family_room,
+    'Bed space':           settings.price_bed_space,
+    'Solo room (1 pax)':   settings.price_solo_room_1pax,
+    'Solo room (2 pax)':   settings.price_solo_room_2pax,
+    'Couple room (1 pax)': settings.price_couple_room_1pax,
+    'Couple room (2 pax)': settings.price_couple_room_2pax,
+    'Family room':         settings.price_family_room,
   };
 
   const KEY_DEPOSIT = settings.key_deposit;
@@ -471,10 +473,12 @@ export default function BookingManagement({
             className="w-full text-xs font-bold bg-slate-100 dark:bg-[#0a0f17] text-gray-700 dark:text-gray-200 border-none outline-none focus:ring-2 focus:ring-cyan-500 py-2.5 px-3 rounded-xl cursor-pointer"
           >
             <option value="All">All Room Types</option>
-            <option value="Bed space">Bed space</option>
-            <option value="Solo room">Solo room</option>
-            <option value="Couple room">Couple room</option>
-            <option value="Family room">Family room</option>
+            <option value="Bed space">Bedspace</option>
+            <option value="Solo room (1 pax)">Solo Room (1 pax)</option>
+            <option value="Solo room (2 pax)">Solo Room (2 pax)</option>
+            <option value="Couple room (1 pax)">Couple Room (1 pax)</option>
+            <option value="Couple room (2 pax)">Couple Room (2 pax)</option>
+            <option value="Family room">Family Room</option>
           </select>
         </div>
       </div>
@@ -862,18 +866,22 @@ export default function BookingManagement({
                       onChange={(e) => {
                         const val = e.target.value as RoomType;
                         setFormRoomType(val);
-                        // default numbers
-                        if (val === 'Bed space') setGuestRoomNumber('101A');
-                        else if (val === 'Solo room') setGuestRoomNumber('202');
-                        else if (val === 'Couple room') setGuestRoomNumber('303');
-                        else setGuestRoomNumber('404');
+                        // default room/bed numbers per type
+                        if (val === 'Bed space')           setGuestRoomNumber('101A');
+                        else if (val === 'Solo room (1 pax)')   setGuestRoomNumber('201');
+                        else if (val === 'Solo room (2 pax)')   setGuestRoomNumber('208');
+                        else if (val === 'Couple room (1 pax)') setGuestRoomNumber('301');
+                        else if (val === 'Couple room (2 pax)') setGuestRoomNumber('312');
+                        else setGuestRoomNumber('401');
                       }}
                       className="w-full px-4 py-2.5 text-sm bg-gray-50 dark:bg-[#0f141c] border-2 border-slate-300 dark:border-slate-600 text-gray-700 dark:text-gray-300 outline-none focus:border-cyan-500 dark:focus:border-cyan-400 rounded-xl font-bold cursor-pointer"
                     >
-                      <option value="Bed space">Bed space (Shared dormitory)</option>
-                      <option value="Solo room">Solo room (Private cabin)</option>
-                      <option value="Couple room">Couple room (Executive suite)</option>
-                      <option value="Family room">Family room (2-3 pax)</option>
+                      <option value="Bed space">Bedspace</option>
+                      <option value="Solo room (1 pax)">Solo Room (1 pax)</option>
+                      <option value="Solo room (2 pax)">Solo Room (2 pax)</option>
+                      <option value="Couple room (1 pax)">Couple Room (1 pax)</option>
+                      <option value="Couple room (2 pax)">Couple Room (2 pax)</option>
+                      <option value="Family room">Family Room (2–3 pax)</option>
                     </select>
                   </div>
 
@@ -1234,7 +1242,7 @@ export default function BookingManagement({
                     </p>
                     <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
                       {(
-                        formRoomType === 'Couple room'
+                        formRoomType === 'Couple room (1 pax)' || formRoomType === 'Couple room (2 pax)'
                           ? ['Wifi', 'Aircon', 'Free Drinking water', 'Free Parking', 'Smoking Area', 'Canteen Inside']
                           : formRoomType === 'Family room'
                           ? ['Wifi', 'Aircon', 'Own CR', 'Free Drinking water', 'Free Parking', 'Smoking Area', 'Canteen Inside']
@@ -2140,7 +2148,7 @@ export default function BookingManagement({
                         <div>
                           <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
                             Actual Check-Out Date
-                            <span className="ml-1.5 text-[9px] text-slate-400 dark:text-slate-500 normal-case tracking-normal font-normal">(auto-filled · not editable)</span>
+                            <span className="ml-1.5 text-[9px] text-slate-400 dark:text-slate-500 normal-case tracking-normal font-normal"></span>
                           </label>
                           <input
                             type="date"

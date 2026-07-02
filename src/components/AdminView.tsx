@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RoomRecord } from '../types';
 
 export interface PriceSettings {
-  price_bed_space:   number;
-  price_solo_room:   number;
-  price_couple_room: number;
-  price_family_room: number;
-  key_deposit:       number;
+  price_bed_space:        number;
+  price_solo_room_1pax:   number;
+  price_solo_room_2pax:   number;
+  price_couple_room_1pax: number;
+  price_couple_room_2pax: number;
+  price_family_room:      number;
+  key_deposit:            number;
 }
 
 interface AdminViewProps {
@@ -19,10 +21,12 @@ interface AdminViewProps {
 }
 
 const ROOM_FIELDS: { key: keyof PriceSettings; label: string; desc: string; icon: string }[] = [
-  { key: 'price_bed_space',   label: 'Bed Space',   desc: 'Price per night for a shared bed space',        icon: '' },
-  { key: 'price_solo_room',   label: 'Solo Room',   desc: 'Price per night for a single occupancy room',   icon: '' },
-  { key: 'price_couple_room', label: 'Couple Room', desc: 'Price per night for a couple/double room',      icon: '' },
-  { key: 'price_family_room', label: 'Family Room', desc: 'Price per night for a family room (2–3 pax)',   icon: '' },
+  { key: 'price_bed_space',        label: 'Bedspace',             desc: 'Price per night for a shared bed space',            icon: '🛏️' },
+  { key: 'price_family_room',      label: 'Family Room (2–3 pax)', desc: 'Price per night for a family room',                icon: '🏡' },
+  { key: 'price_solo_room_1pax',   label: 'Solo Room (1 pax)',    desc: 'Price per night for a solo room, single occupancy', icon: '🚪' },
+  { key: 'price_solo_room_2pax',   label: 'Solo Room (2 pax)',    desc: 'Price per night for a solo room, two occupants',    icon: '🚪' },
+  { key: 'price_couple_room_1pax', label: 'Couple Room (1 pax)',  desc: 'Price per night for a couple room, single occupant',icon: '🏠' },
+  { key: 'price_couple_room_2pax', label: 'Couple Room (2 pax)',  desc: 'Price per night for a couple room, two occupants',  icon: '🏠' },
 ];
 
 type SaveState = 'idle' | 'saving' | 'success' | 'error';
@@ -452,7 +456,10 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
             >
               <div className="px-6 pb-6 border-t-2 border-slate-200 dark:border-slate-700/80 pt-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {rooms.map((room) => {
+                  {[...rooms].sort((a, b) => {
+                    const order = ['Bed space', 'Family room', 'Solo room (1 pax)', 'Solo room (2 pax)', 'Couple room (1 pax)', 'Couple room (2 pax)'];
+                    return order.indexOf(a.type) - order.indexOf(b.type);
+                  }).map((room) => {
                     const draftVal = slotsDraft[room.id] ?? room.totalRooms;
                     const changed  = draftVal !== room.totalRooms;
                     const tooLow   = draftVal < room.occupiedRooms;

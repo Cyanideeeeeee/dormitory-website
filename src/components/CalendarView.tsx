@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, Users, AlertTriangle, Eye, X, User, Mail, Hash, Bed, CreditCard, CheckCircle2, XCircle, LogOut, CalendarPlus, ZoomIn, ImageIcon, RotateCcw, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookingRecord, BookingStatus } from '../types';
+import { PriceSettings } from './AdminView';
 
 interface CalendarViewProps {
   bookings: BookingRecord[];
+  settings: PriceSettings;
   onUpdateBookingStatus: (id: string, status: BookingStatus) => void;
   onExtendBooking: (id: string, newCheckOut: string, extraPrice: number, extendPaymentMode: 'Cash' | 'GCash', extendReferenceNumber: string, overstayPenalty?: number, extendDiscount?: number) => void;
   onEarlyCheckout: (id: string, actualCheckOutDate: string, refundAmount: number) => void;
@@ -49,7 +51,7 @@ function isOverdue(booking: BookingRecord): boolean {
   return new Date() >= dueAt;
 }
 
-export default function CalendarView({ bookings, onUpdateBookingStatus, onExtendBooking, onEarlyCheckout, onOverstayCheckout, onManualCheckout }: CalendarViewProps) {
+export default function CalendarView({ bookings, settings, onUpdateBookingStatus, onExtendBooking, onEarlyCheckout, onOverstayCheckout, onManualCheckout }: CalendarViewProps) {
   const today = new Date();
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -91,7 +93,12 @@ export default function CalendarView({ bookings, onUpdateBookingStatus, onExtend
 
   const KEY_DEPOSIT = 200;
   const ROOM_PRICES: Record<string, number> = {
-    'Bed space': 250, 'Solo room': 525, 'Couple room': 825, 'Family room': 1200,
+    'Bed space':           settings.price_bed_space,
+    'Solo room (1 pax)':   settings.price_solo_room_1pax,
+    'Solo room (2 pax)':   settings.price_solo_room_2pax,
+    'Couple room (1 pax)': settings.price_couple_room_1pax,
+    'Couple room (2 pax)': settings.price_couple_room_2pax,
+    'Family room':         settings.price_family_room,
   };
 
   const activeBookings = useMemo(

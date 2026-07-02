@@ -126,10 +126,12 @@ export default function DashboardView({
     return Math.max(0, roomInfo.totalRooms - activeBookings);
   };
 
-  const bedSpaceAvailable = getAvailableRoomsCount('Bed space');
-  const soloRoomAvailable = getAvailableRoomsCount('Solo room');
-  const coupleRoomAvailable = getAvailableRoomsCount('Couple room');
-  const familyRoomAvailable = getAvailableRoomsCount('Family room');
+  const bedSpaceAvailable      = getAvailableRoomsCount('Bed space');
+  const soloRoom1PaxAvailable  = getAvailableRoomsCount('Solo room (1 pax)');
+  const soloRoom2PaxAvailable  = getAvailableRoomsCount('Solo room (2 pax)');
+  const coupleRoom1PaxAvailable = getAvailableRoomsCount('Couple room (1 pax)');
+  const coupleRoom2PaxAvailable = getAvailableRoomsCount('Couple room (2 pax)');
+  const familyRoomAvailable    = getAvailableRoomsCount('Family room');
 
   // Chart 1: Room Occupancy Statistics
   const roomStatsData = rooms.map((r) => {
@@ -223,7 +225,7 @@ export default function DashboardView({
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
           {/* Room type filter — scrollable on mobile */}
           <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-[#0a0f17] p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full">
-            {(['All', 'Bed space', 'Solo room', 'Couple room', 'Family room'] as const).map((cat) => (
+            {(['All', 'Bed space', 'Solo room (1 pax)', 'Solo room (2 pax)', 'Couple room (1 pax)', 'Couple room (2 pax)', 'Family room'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setRoomCategoryFilter(cat)}
@@ -295,12 +297,14 @@ export default function DashboardView({
               <Bed className="w-3.5 h-3.5" />
               Room Availability
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {[
-                { label: 'Bed space', value: bedSpaceAvailable, color: 'text-cyan-600 dark:text-cyan-400', ring: 'ring-cyan-200 dark:ring-cyan-900/60', dot: 'bg-cyan-500' },
-                { label: 'Solo room', value: soloRoomAvailable, color: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-200 dark:ring-violet-900/60', dot: 'bg-violet-500' },
-                { label: 'Couple room', value: coupleRoomAvailable, color: 'text-amber-600 dark:text-amber-400', ring: 'ring-amber-200 dark:ring-amber-900/60', dot: 'bg-amber-500' },
-                { label: 'Family room', value: familyRoomAvailable, color: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-900/60', dot: 'bg-emerald-500' },
+                { label: 'Bedspace',             value: bedSpaceAvailable,       color: 'text-cyan-600 dark:text-cyan-400',    ring: 'ring-cyan-200 dark:ring-cyan-900/60',    dot: 'bg-cyan-500'    },
+                { label: 'Family Room',           value: familyRoomAvailable,     color: 'text-emerald-600 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-900/60', dot: 'bg-emerald-500' },
+                { label: 'Solo Room (1 pax)',     value: soloRoom1PaxAvailable,   color: 'text-violet-600 dark:text-violet-400', ring: 'ring-violet-200 dark:ring-violet-900/60', dot: 'bg-violet-500' },
+                { label: 'Solo Room (2 pax)',     value: soloRoom2PaxAvailable,   color: 'text-purple-600 dark:text-purple-400', ring: 'ring-purple-200 dark:ring-purple-900/60', dot: 'bg-purple-500' },
+                { label: 'Couple Room (1 pax)',   value: coupleRoom1PaxAvailable, color: 'text-amber-600 dark:text-amber-400',   ring: 'ring-amber-200 dark:ring-amber-900/60',   dot: 'bg-amber-500'  },
+                { label: 'Couple Room (2 pax)',   value: coupleRoom2PaxAvailable, color: 'text-orange-600 dark:text-orange-400', ring: 'ring-orange-200 dark:ring-orange-900/60', dot: 'bg-orange-500' },
               ].map((room) => (
                 <motion.div
                   key={room.label}
@@ -317,12 +321,14 @@ export default function DashboardView({
 
           {/* MONTHLY ROOM STATISTICS CHART */}
           {(() => {
-            const roomTypes = ['Bed space', 'Solo room', 'Couple room', 'Family room'] as const;
+            const roomTypes = ['Bed space', 'Solo room (1 pax)', 'Solo room (2 pax)', 'Couple room (1 pax)', 'Couple room (2 pax)', 'Family room'] as const;
             const colors: Record<string, string> = {
-              'Bed space':   '#06b6d4',
-              'Solo room':   '#8b5cf6',
-              'Couple room': '#f59e0b',
-              'Family room': '#10b981',
+              'Bed space':            '#06b6d4',
+              'Solo room (1 pax)':    '#8b5cf6',
+              'Solo room (2 pax)':    '#a855f7',
+              'Couple room (1 pax)':  '#f59e0b',
+              'Couple room (2 pax)':  '#f97316',
+              'Family room':          '#10b981',
             };
             const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
