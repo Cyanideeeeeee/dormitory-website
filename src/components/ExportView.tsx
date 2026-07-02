@@ -209,13 +209,11 @@ export default function ExportView({ bookings, rooms }: ExportViewProps) {
         const discount       = b.discountAmount   ?? 0;
         const refund         = b.refundAmount      ?? 0;
         const overstayPenalty = b.overstayPenalty ?? 0;
-        const extensionCost  = b.extensionCost    ?? 0;
 
-        parts.push(`${nights} night${nights !== 1 ? 's' : ''} x ₱${((b.price - deposit + discount - overstayPenalty - extensionCost) / nights).toFixed(0)}/night`);
+        parts.push(`${nights} night${nights !== 1 ? 's' : ''} x ₱${((b.price - deposit + discount - overstayPenalty) / nights).toFixed(0)}/night`);
         if (deposit > 0)        parts.push(`Key Deposit: ₱${deposit.toLocaleString()}`);
         if (discount > 0)       parts.push(`Discount: -₱${discount.toLocaleString()}`);
         if (overstayPenalty > 0) parts.push(`Overstay Penalty: +₱${overstayPenalty.toLocaleString()}`);
-        if (extensionCost > 0)  parts.push(`Extension: +₱${extensionCost.toLocaleString()}`);
         if (refund > 0)         parts.push(`Refund: -₱${refund.toLocaleString()}`);
         return parts.join(' | ');
       };

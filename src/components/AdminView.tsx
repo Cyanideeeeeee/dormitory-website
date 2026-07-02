@@ -119,10 +119,10 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
       {/* ── HEADER ─────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-slate-200 dark:border-[#1e2a3a] pb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white font-display">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white font-display">
             Admin Settings
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 font-medium leading-relaxed">
+          <p className="text-sm text-gray-700 dark:text-gray-200 mt-1.5 font-semibold leading-relaxed">
             Manage room prices and key deposit — changes apply immediately to new bookings
           </p>
         </div>
@@ -209,8 +209,8 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
               }`} />
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Room Prices</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+              <p className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Room Prices</p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 font-semibold">
                 {isEditingPrices
                   ? 'Edit prices per room type below'
                   : ROOM_FIELDS.map((f) => `${f.label}: ₱${settings[f.key].toLocaleString()}`).join('  ·  ')
@@ -266,10 +266,10 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">{field.desc}</p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5 font-semibold">{field.desc}</p>
                           </div>
                           {changed && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+                            <p className="text-[10px] text-gray-700 dark:text-gray-300 font-mono font-bold shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
                               was ₱{settings[field.key].toLocaleString()}
                             </p>
                           )}
@@ -285,7 +285,7 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                             className="w-full pl-8 pr-4 py-2.5 text-sm font-bold bg-white dark:bg-[#151c27] border-2 border-slate-300 dark:border-slate-600 focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 rounded-xl text-gray-800 dark:text-gray-100 transition-all placeholder:text-gray-400"
                           />
                         </div>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 font-medium">
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-2 font-semibold">
                           2 nights = <span className="font-bold text-gray-700 dark:text-gray-300">₱{(draft[field.key] * 2).toLocaleString()}</span>
                           &nbsp;·&nbsp;
                           7 nights = <span className="font-bold text-gray-700 dark:text-gray-300">₱{(draft[field.key] * 7).toLocaleString()}</span>
@@ -323,8 +323,8 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
               }`} />
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Key Deposit</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+              <p className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Key Deposit</p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 font-semibold">
                 {isEditingDeposit
                   ? 'Edit the refundable key deposit amount below'
                   : `Current deposit: ₱${settings.key_deposit.toLocaleString()} — refundable on check-out`
@@ -368,12 +368,12 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5 font-semibold">
                       Added to every booking — returned to border on check-out
                     </p>
                   </div>
                   {draft.key_deposit !== settings.key_deposit && (
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+                    <p className="text-[10px] text-gray-700 dark:text-gray-300 font-mono font-bold shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
                       was ₱{settings.key_deposit.toLocaleString()}
                     </p>
                   )}
@@ -420,8 +420,8 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
               }`} />
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-gray-900 dark:text-white tracking-tight">Room Slots</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">
+              <p className="text-sm font-black text-gray-900 dark:text-white tracking-tight">Room Slots</p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 font-semibold">
                 {isEditingSlots
                   ? 'Edit total available slots per room type below'
                   : rooms.map((r) => `${r.type}: ${r.totalRooms}`).join('  ·  ')
@@ -457,7 +457,7 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
               <div className="px-6 pb-6 border-t-2 border-slate-200 dark:border-slate-700/80 pt-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[...rooms].sort((a, b) => {
-                    const order = ['Bed space', 'Family room', 'Solo room (1 pax)', 'Solo room (2 pax)', 'Couple room (1 pax)', 'Couple room (2 pax)'];
+                    const order = ['Bedspace', 'Family room', 'Solo room (1 pax)', 'Solo room (2 pax)', 'Couple room (1 pax)', 'Couple room (2 pax)'];
                     return order.indexOf(a.type) - order.indexOf(b.type);
                   }).map((room) => {
                     const draftVal = slotsDraft[room.id] ?? room.totalRooms;
@@ -478,7 +478,7 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-xs font-bold text-gray-900 dark:text-white tracking-tight">{room.type}</p>
+                              <p className="text-xs font-black text-gray-900 dark:text-white tracking-tight">{room.type}</p>
                               {changed && !tooLow && (
                                 <span className="text-[9px] font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 px-1.5 py-0.5 rounded-full border border-violet-300 dark:border-violet-700">
                                   Modified
@@ -490,10 +490,10 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 font-medium">{room.name}</p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5 font-semibold">{room.name}</p>
                           </div>
                           {changed && (
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+                            <p className="text-[10px] text-gray-700 dark:text-gray-300 font-mono font-bold shrink-0 ml-2 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
                               was {room.totalRooms}
                             </p>
                           )}
@@ -516,10 +516,10 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
                         {/* Occupancy bar */}
                         <div className="mt-3 space-y-1.5">
                           <div className="flex items-center justify-between text-[10px] font-semibold">
-                            <span className="text-gray-400 dark:text-gray-500">
-                              Occupied: <span className="text-gray-700 dark:text-gray-300 font-bold">{room.occupiedRooms}</span>
+                            <span className="text-gray-600 dark:text-gray-400 font-semibold">
+                              Occupied: <span className="text-gray-900 dark:text-white font-black">{room.occupiedRooms}</span>
                             </span>
-                            <span className="text-gray-400 dark:text-gray-500">
+                            <span className="text-gray-600 dark:text-gray-400 font-semibold">
                               Available: <span className={`font-bold ${tooLow ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                                 {Math.max(0, draftVal - room.occupiedRooms)}
                               </span>
@@ -547,8 +547,8 @@ export default function AdminView({ settings, onSaveSettings, rooms, onSaveRoomS
       {/* ── INFO NOTE ───────────────────────────────────────────── */}
       <div className="flex items-start gap-3.5 p-4 bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-100 dark:border-blue-900/50 rounded-2xl shadow-sm">
         <Settings className="w-4 h-4 text-blue-500 dark:text-blue-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
-          Changes saved here update the prices in Supabase instantly. All <strong className="font-bold text-blue-800 dark:text-blue-200">new bookings</strong> created after saving will use the updated rates. Existing bookings are not affected.
+        <p className="text-xs text-blue-800 dark:text-blue-200 font-semibold leading-relaxed">
+          Changes saved here update the prices in Supabase instantly. All <strong className="font-black text-blue-900 dark:text-blue-100">new bookings</strong> created after saving will use the updated rates. Existing bookings are not affected.
         </p>
       </div>
     </div>
